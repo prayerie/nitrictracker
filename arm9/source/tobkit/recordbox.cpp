@@ -25,9 +25,9 @@
 #include "recordbox.h"
 
 #include <nds.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "../tools.h"
 #include "ntxm/instrument.h"

@@ -25,9 +25,9 @@
 #include "patternview.h"
 #include "../tools.h"
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
 
 
 /* ===================== PUBLIC ===================== */

@@ -24,8 +24,8 @@
 
 #include "sampledisplay.h"
 
-#include <math.h>
-#include <stdio.h>
+#include <cmath>
+#include <cstdio>
 
 #include "ntxm/ntxmtools.h"
 #include "../tools.h"

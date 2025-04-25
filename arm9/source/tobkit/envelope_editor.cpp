@@ -24,9 +24,9 @@
 
 #include "envelope_editor.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include "ntxm/ntxmtools.h"
 #include "../tools.h"
