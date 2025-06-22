@@ -32,7 +32,7 @@ class File {
 		std::string name_with_path;
 		u8 order;
 		bool is_dir;
-		u32 size;
+		// u32 size;
 };
 
 class FileSelector: public ListBox {

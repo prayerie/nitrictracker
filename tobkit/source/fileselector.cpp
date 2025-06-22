@@ -218,7 +218,7 @@ void FileSelector::read_directory(void)
 	}
 
 	DIR *dir;
-	struct stat filestats;
+	// struct stat filestats;
 
 	if((dir = opendir(current_directory.c_str())) == NULL)
 	{
@@ -228,23 +228,22 @@ void FileSelector::read_directory(void)
 
 	struct dirent *direntry = readdir(dir);
 
-	char filename[PATH_MAX];
+	char filename[PATH_MAX+1];
 	while(direntry != NULL)
 	{
 		if(direntry->d_name[0] != '.') { // Hidden and boring files
-
 			File newfile;
 			newfile.name = direntry->d_name;
 			newfile.name_with_path = current_directory + direntry->d_name;
 			newfile.is_dir = (direntry->d_type == DT_DIR);
 			newfile.order = newfile.is_dir ? 1 : 2;
 
-            if(!newfile.is_dir) {
+            /* if(!newfile.is_dir) {
                 int stat_res = stat(newfile.name_with_path.c_str(), &filestats);
                 if(stat_res != -1) {
         			newfile.size = filestats.st_size;
                 }
-            }
+            } */
 			filelist.push_back(newfile);
 		}
 		direntry = readdir(dir);
@@ -285,7 +284,7 @@ void FileSelector::read_directory(void)
 		dotdot.name = "..";
 		dotdot.is_dir = true;
 		dotdot.order = 0;
-		dotdot.size = 0;
+		// dotdot.size = 0;
 		filelist.push_back(dotdot);
 	}
 
@@ -296,13 +295,14 @@ void FileSelector::read_directory(void)
 	activeelement = 0;
 	scrollpos = 0;
 
+	filename[sizeof(filename) - 1] = 0;
 	std::string newentry;
-	for(u16 i=0;i<filelist.size();++i) {
+	for(int i=0;i<filelist.size();++i) {
 		newentry = filelist.at(i).name;
 		if(filelist.at(i).is_dir == true) {
 			newentry = "[" + newentry + "]";
 		}
-		strncpy(filename, newentry.c_str(), 255);
+		strncpy(filename, newentry.c_str(), sizeof(filename)-1);
 		elements.push_back(filename);
 	}
 }

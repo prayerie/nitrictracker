@@ -6,6 +6,7 @@ Improvements:
 
 Fixes:
 
+- [#126] poor performance in large directories
 - [#128] fixed bugs in DSMIDI USB support (Rachel Birdy)
 
 -- NitrousTracker v0.4.14 (2025-04-26)
