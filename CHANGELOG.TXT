@@ -1,3 +1,13 @@
+-- NitrousTracker dev
+
+Improvements:
+
+- DSMIDI now better handles polyphony (Rachel Birdy)
+
+Fixes:
+
+- [#128] fixed bugs in DSMIDI USB support (Rachel Birdy)
+
 -- NitrousTracker v0.4.14 (2025-04-26)
 
 Improvements:
