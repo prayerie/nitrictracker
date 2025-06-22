@@ -84,15 +84,12 @@ int main(int argc, char ** argv) {
 #endif
 	installSystemFIFO();
 
-	irqEnable(IRQ_VBLANK | IRQ_VCOUNT);
 #ifdef MIDI
-	irqEnable(IRQ_NETWORK);
-#endif
-#ifdef __BLOCKSDS__
-	initClockIRQTimer(3);
+	irqEnable(IRQ_VBLANK | IRQ_VCOUNT | IRQ_NETWORK);
 #else
-	rtcReset();
+	irqEnable(IRQ_VBLANK | IRQ_VCOUNT);
 #endif
+	initClockIRQTimer(3);
 
 	// Create ntxm player
 	ntxm7 = new NTXM7(ntxmTimerHandler);
