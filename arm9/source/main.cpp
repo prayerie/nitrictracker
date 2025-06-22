@@ -1305,8 +1305,7 @@ void handleDSMWRecv(void)
 	while(dsmi_read(&message, &data1, &data2))
 	{
 		if(state->dsmi_recv) {
-
-			debugprintf("got sth. %x %x %x\n", message, data1, data2);
+			// debugprintf("got sth. %x %x %x\n", message, data1, data2);
 
 			u8 type = message & 0xF0;
 			//debugprintf("Type is %x\n", type);
@@ -1317,17 +1316,19 @@ void handleDSMWRecv(void)
 					u8 inst = message & 0x0F;
 					u8 note = data1;
 					u8 volume = data2;
-					debugprintf("on %d %d\n", inst, note);
+					// debugprintf("on %d %d\n", inst, note);
 					CommandPlayInst(inst, note, volume, channel);
 					break;
 				}
 
 				case NOTE_OFF: {
-					u8 channel = 255;
+					// FIXME: Autochannel stores only the last activated channel, which
+					// breaks polyphony. This mitigates the issue by disabling all
+					// matching notes, but a better fix would probably be to remember
+					// which NTXM channels are mapped to which MIDI channels.
 					u8 inst = message & 0x0F;
 					u8 note = data1;
-					u8 volume = data2;
-					CommandStopMidiInst(inst, note, volume, channel);
+					CommandStopMatchingInst(inst, note);
 					break;
 				}
 			}
