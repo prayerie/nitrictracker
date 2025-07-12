@@ -1,8 +1,9 @@
--- NitrousTracker dev
+-- NitrousTracker v0.4.15 (2025-07-12)
 
 Improvements:
 
 - DSMIDI now better handles polyphony (Rachel Birdy)
+- updated BlocksDS toolchain
 
 Fixes:
 
