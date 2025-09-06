@@ -1177,7 +1177,7 @@ void stop(void)
 	// if state->playing == true. So, by setting it to false here we might miss ticks
 	// resultsing in the pattern view being out of sync with the song. So we wait two
 	// frames to make sure the arm7 has really stopped and redraw the pattern.
-	swiWaitForVBlank(); swiWaitForVBlank();
+	cothread_yield_irq(IRQ_VBLANK); cothread_yield_irq(IRQ_VBLANK);
 	redraw_main_requested = false;
 	drawMainScreen();
 
@@ -1730,7 +1730,7 @@ void handleFileChange(File file)
 						CommandStopSample(0);
 						while(state->preview_sample)
 						{
-							swiWaitForVBlank();
+							cothread_yield_irq(IRQ_VBLANK);
 						}
 					}
 
@@ -3653,7 +3653,7 @@ void fadeIn(void)
 	for(int i=-16; i <= 0; ++i)
 	{
 	    setBrightness(3, i);
-		swiWaitForVBlank();
+		cothread_yield_irq(IRQ_VBLANK);
 	}
 }
 
@@ -3891,7 +3891,7 @@ int main(int argc, char **argv) {
             exit_requested = true;
         }
 #endif
-		swiWaitForVBlank();
+		cothread_yield_irq(IRQ_VBLANK);
 	}
 
 	if (launch_path) free(launch_path);
