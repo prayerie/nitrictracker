@@ -27,6 +27,7 @@
 
 #include "tobkit/widget.h"
 #include "ntxm/song.h"
+#include "../settings.h"
 
 #include "../state.h"
 #include "font_3x5_raw.h"
@@ -86,7 +87,7 @@ const u8 notes_signs[] =   {0 , 1 , 0 , 1 , 0 , 0 , 1 , 0 , 1 , 0 , 1 ,  0};
 class PatternView: public Widget {
 	public:
 		// Constructor sets base variables
-		PatternView(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, State *_state);
+		PatternView(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, State *_state, Settings *_settings);
 		
 		// Drawing request
 		void pleaseDraw(void);

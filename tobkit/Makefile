@@ -199,14 +199,14 @@ $(BUILDDIR)/%.png.o $(BUILDDIR)/%.h : %.png %.grit
 $(BUILDDIR)/fonts/font_8x11.raw.o : fonts/font_8x11.png fonts/font_8x11.png.txt
 	@echo $(notdir $<)
 	@$(MKDIR) -p $(@D)
-	$(V)python3 $(TOOLSDIR)/font_pack.py $< $(basename $(basename $@)).raw
+	$(V)python $(TOOLSDIR)/font_pack.py $< $(basename $(basename $@)).raw
 	$(V)$(BLOCKSDS)/tools/bin2c/bin2c $(basename $(basename $@)).raw $(@D)
 	$(V)$(CC) $(CFLAGS) -MMD -MP -c -o $(basename $(basename $@)).raw.o $(basename $(basename $@))_raw.c
 
 $(BUILDDIR)/%.raw.o : %.png
 	@echo $(notdir $<)
 	@$(MKDIR) -p $(@D)
-	$(V)python3 $(TOOLSDIR)/icon_pack.py $< $(basename $(basename $@)).raw
+	$(V)python $(TOOLSDIR)/icon_pack.py $< $(basename $(basename $@)).raw
 	$(V)$(BLOCKSDS)/tools/bin2c/bin2c $(basename $(basename $@)).raw $(@D)
 	$(V)$(CC) $(CFLAGS) -MMD -MP -c -o $(basename $(basename $@)).raw.o $(basename $(basename $@))_raw.c
 

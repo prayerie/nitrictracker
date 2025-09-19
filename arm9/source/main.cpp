@@ -22,10 +22,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// #define SHOW_ALL_SETTINGS
+#define SHOW_ALL_SETTINGS
 #define GURU // Show guru meditations
 #define USE_FAT
-// #define ENABLE_EFFECT_MENU
+#define ENABLE_EFFECT_MENU
 
 #include <nds.h>
 #include <nds/arm9/console.h>
@@ -3442,7 +3442,7 @@ void setupGUI(bool dldi_enabled)
 		buttondelnote->setCaption("del");
 		buttonemptynote2->setCaption("clr");
 
-		pv = new PatternView(0, 0, 200, 192, &main_vram_back, state);
+		pv = new PatternView(0, 0, 200, 192, &main_vram_back, state, settings);
 		pv->setSong(song);
 		pv->registerMuteCallback(handleMuteChannelsChanged);
 

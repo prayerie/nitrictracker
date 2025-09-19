@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!python
 
 # Copyright (c) 2020 Adrian Siekierka
 #
