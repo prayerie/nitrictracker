@@ -1,3 +1,11 @@
+fork^2 info
+---------
+
+i needlessly changed references to 'python3' to 'python' due to my msys2 environment but will undo that later
+just using this to mess around and maybe try and fully implement themeing, idk if i will bother pr
+
+original readme:
+
 
       NitrousTracker v0.4.16
      --------------------------------
