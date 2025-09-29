@@ -3521,14 +3521,12 @@ void handleButtons(u16 buttons, u16 buttonsheld)
 		u16 new_i = cur_i;
 		if(buttons & mykey_DOWN) {
 			new_i = cur_i + move_by >= 0x7f ? 0x7f : cur_i + move_by;
-			lbinstruments->highlight(new_i);
 			lbinstruments->select(new_i);
 			handleInstChange(new_i);
 		}
 
 		if(buttons & mykey_UP) {
 			new_i = cur_i - move_by <= 0 ? 0 : cur_i - move_by;
-			lbinstruments->highlight(new_i);
 			lbinstruments->select(new_i);
 			handleInstChange(new_i);
 		}
