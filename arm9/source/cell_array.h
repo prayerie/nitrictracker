@@ -22,6 +22,7 @@ class CellArray {
 
         void copy(Cell **ptn, int x1, int y1);
         void paste(Cell **ptn, int width, int height, int x1, int y1);
+        void paste(CellArray *cellarr, int x1, int y1);
 
         CellArray *clone();
 		

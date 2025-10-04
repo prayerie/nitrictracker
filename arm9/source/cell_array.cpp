@@ -78,6 +78,23 @@ void CellArray::paste(Cell **ptn, int width, int height, int x1, int y1)
     }
 }
 
+void CellArray::paste(CellArray* cellarr, int x1, int y1)
+{
+    int x2 = std::min(cellarr->width(), x1 + array_width);
+    int y2 = std::min(cellarr->height(), y1 + array_height);
+    
+    Cell *src = array;
+
+    for (int x = x1; x < x2; x++, src += array_height)
+    {
+        for (int y = y1; y < y2; y++) 
+        {
+            Cell *dst = cellarr->ptr(x, y);
+            memcpy(dst, src + y, sizeof(Cell));
+        }
+    }
+}
+
 void CellArray::for_each(std::function<void(Cell*)> cell_fn)
 {
     Cell *dst = array;
