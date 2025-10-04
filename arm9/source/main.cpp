@@ -2294,31 +2294,22 @@ void handleCopy(void)
 
 void handlePaste(void)
 {
-	int ptn_n_rows = song->getPatternLength(state->potpos);
-	int n_channels = song->getChannels();
-	u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
-	u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
-	
-	CellArray *new_i;
-	u8 new_height = clipboard->height() - rows_over;
-	u8 new_width = clipboard->width() - cols_over;
 	if(clipboard != NULL) {
+		int ptn_n_rows = song->getPatternLength(state->potpos);
+		int n_channels = song->getChannels();
+		u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
+		u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
+		
+		CellArray *new_i;
+		u8 new_height = clipboard->height() - rows_over;
+		u8 new_width = clipboard->width() - cols_over;
+
 		if (rows_over > 0 || cols_over > 0) 
 			new_i = new CellArray(new_width, new_height);
 		
 		if ((rows_over > 0 || cols_over > 0) && new_i != NULL) {
 			my_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
-
-			int x = 0, y = 0;
-			clipboard->for_each([new_i, new_height, new_width, &x, &y](Cell *c){  // uhhhh
-				if (y < new_height && x < new_width)
-					new_i->ptr(0, 0)[x * new_height + y] = *c;
-
-				if (++y == clipboard->height()) {
-					y = 0;
-					x++;
-				}
-			});
+			clipboard->paste(new_i, 0, 0);
 
 			action_buffer->add(song, new MultipleCellSetAction(state, state->channel, state->getCursorRow(), new_i, true));
 			delete new_i;
