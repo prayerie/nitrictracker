@@ -41,7 +41,7 @@ RecordBox::RecordBox(u16 **_vram, void (*_onOk)(void), void (*_onCancel)(void), 
 	:Widget((SCREEN_WIDTH-RECORDBOX_WIDTH)/2, (SCREEN_HEIGHT-RECORDBOX_HEIGHT)/2,
 		RECORDBOX_WIDTH, RECORDBOX_HEIGHT, _vram, true),
   	recording(false), btndown(false), onOk(_onOk), onCancel(_onCancel), sample(_sample),
-	instrument(_instrument), smpidx(_smpidx), sound_data(0)
+	instrument(_instrument), smpidx(_smpidx), sound_data(NULL)
 {
 	title = "sample recorder";
 	
@@ -68,6 +68,9 @@ RecordBox::RecordBox(u16 **_vram, void (*_onOk)(void), void (*_onCancel)(void), 
 
 RecordBox::~RecordBox(void)
 {
+	if(sound_data)
+		free(sound_data);
+
 	delete labelmsg;
 	delete labelmsg2;
 	delete labelrec;
@@ -185,9 +188,11 @@ void RecordBox::startRecording(void)
 		if(sample != NULL)
 			instrument->setSample(smpidx, NULL); // Deletes the sample
 
-		if(sound_data) free(sound_data);
+		if(sound_data)
+			free(sound_data);
 		sound_data = (u16*)malloc(RECORDBOX_SOUNDDATA_SIZE);
-		if(!sound_data) return;
+		if(!sound_data)
+			return;
 
 		// Start recording
 		DC_FlushAll();
@@ -208,10 +213,11 @@ void RecordBox::stopRecording()
 	// Security check
 	if(size < RECORDBOX_CROP_SAMPLES_END + RECORDBOX_CROP_SAMPLES_START)
 	{
-		free(sound_data);
+		if(sound_data)
+			free(sound_data);
 		sound_data = NULL;
 		sample = NULL;
-		onOk();
+		onCancel();
 		debugprintf("recorded data too small\n");
 		return;
 	}
