@@ -124,6 +124,10 @@ void RecordBox::buttonRelease(u16 button)
 
 Sample *RecordBox::getSample(void)
 {
+	if (sample == NULL) {
+		debugprintf("record failed, inserting a dummy sample\n");
+		return new Sample((u16*)calloc(4, 2), 4, RECORDBOX_SAMPLING_FREQ); // dummy sample just big enough to avert crashes from loop points, etc
+	}
 	return sample;
 }
 
