@@ -1,3 +1,16 @@
+-- NitrousTracker v0.4.16 (2025-07-12)
+
+Improvements:
+
+- [#147] transpose buttons! hold R to transpose selection by an octave (Arikari405)
+- updated BlocksDS toolchain
+
+Fixes:
+
+- [#142] fixed oversized pastes not working (prayerie)
+- [#143] fixed crashes on too short microphone samples
+- [#146] fixed not displaying instrument values properly in edge cases (Arikari405)
+
 -- NitrousTracker v0.4.15 (2025-07-12)
 
 Improvements:
