@@ -1856,12 +1856,14 @@ void handleTranspose(s32 transpose_amount)
 
 void handleTransposeUp(void)
 {
-	handleTranspose(1);
+	u16 keysheld = keysHeld();
+	handleTranspose((keysheld & mykey_R) ? 12 : 1);
 }
 
 void handleTransposeDown(void)
 {
-	handleTranspose(-1);
+	u16 keysheld = keysHeld();
+	handleTranspose((keysheld & mykey_R) ? -12 : -1);
 }
 
 // number slider
