@@ -29,21 +29,36 @@
 #include <cstdio>
 #include <cstdlib>
 
-
+	// col_bg                  = RGB15(25, 6, 16)|BIT(15);
+	// col_dark_bg             = col_bg;
+	// col_medium_bg           = RGB15(19, 10, 19)|BIT(15);
+	// col_light_bg            = RGB15(25, 16, 21)|BIT(15);
+	// col_lighter_bg          = RGB15(25, 16, 23)|BIT(15);
+	// col_light_ctrl          = RGB15(31,31,0)|BIT(15); // RGB15(26,26,26)|BIT(15)
+	// col_dark_ctrl           = RGB15(31,18,0)|BIT(15); // RGB15(31,31,31)|BIT(15)
+	// col_light_ctrl_disabled = col_light_bg;
+	// col_dark_ctrl_disabled  = col_medium_bg;
+	// col_list_highlight1     = RGB15(28,15,0)|BIT(15);
+	// col_list_highlight2     = RGB15(28,28,0)|BIT(15);
+	// col_outline             = RGB15(0,0,0)|BIT(15);
+	// col_sepline             = RGB15(31,31,0)|BIT(15);
+	// col_icon                = RGB15(0,0,0)|BIT(15);
+	// col_text                = RGB15(0,0,0)|BIT(15);
+	// col_signal              = RGB15(31,0,0)|BIT(15);
 /* ===================== PUBLIC ===================== */
 
 // Constructor sets base variables
 PatternView::PatternView(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, State *_state, Settings *_settings)
 	:Widget(_x, _y, _width, _height, _vram),
 	onMute(0), pattern(0), song(0), state(_state),
-	col_lines(RGB15(16,18,24)|BIT(15)),
-	col_sublines(RGB15(7,9,17)|BIT(15)),
+	// col_lines(theme->col_lighter_bg),
+	// col_sublines(theme->col_light_bg),
 	col_lines_record(RGB15(31,18,0)|BIT(15)),
-	cb_col1(RGB15(9,11,17)|BIT(15)),
-	cb_col2(RGB15(16,18,24)|BIT(15)),
-	cb_col1_highlight(RGB15(28,15,0)|BIT(15)),
-	cb_col2_highlight(RGB15(28,28,0)|BIT(15)),
-	col_left_numbers(RGB15(28,15,0)|BIT(15)),
+	// cb_col1(_theme->col_bg),
+	// cb_col2(_theme->col_medium_bg),
+	// cb_col1_highlight(_theme->col_light_bg),
+	// cb_col2_highlight(_theme->col_lighter_bg),
+	// col_left_numbers(RGB15(28,15,0)|BIT(15)),
 	col_notes(RGB15(9,15,31)|BIT(15)), /* RGB15(3,11,31) */
 	col_instr(RGB15(31,11,0)|BIT(15)),
 	col_volume(RGB15(0,27,0)|BIT(15)),
@@ -54,10 +69,10 @@ PatternView::PatternView(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, St
 	col_volume_dark(RGB15(0,16,0)|BIT(15)),
 	col_effect_dark(RGB15(5,2,25)|BIT(15)),
 	col_effect_param_dark(RGB15(7,5,20)|BIT(15)),
-	col_bg(_settings->getTheme()->col_bg),
+	col_bg(theme->col_bg),
 	cb_sel_highlight(RGB15(31,24,0)|BIT(15)),
 	hscrollpos(0), lines_per_beat(8), selection_exists(false), pen_down(false),
-	effects_visible(true), cell_width(50)
+	effects_visible(true), cell_width(50), settings(_settings), theme(_settings->getTheme())
 {
 	for(int i=0;i<32;++i)
 	{
@@ -167,6 +182,12 @@ bool PatternView::getSelection(u16 *sel_x1, u16 *sel_y1, u16 *sel_x2, u16 *sel_y
 	return true;
 }
 
+
+void PatternView::setTheme(Theme *theme_, u16 bgcolor_) {
+	theme = theme_;
+	bgcolor = bgcolor_;
+	pleaseDraw();
+}
 // Sets the selection to the given coordinates
 void PatternView::setSelection(u16 sel_x1, u16 sel_y1, u16 sel_x2, u16 sel_y2)
 {
@@ -252,7 +273,7 @@ void PatternView::toggleEffectsVisibility(bool on)
 // the whole screen.
 void PatternView::draw(void)
 {
-	u32 colcol = col_bg | col_bg << 16;
+	u32 colcol = theme->col_bg | theme->col_bg << 16;
 	s32 sel_screen_x1 = -1, sel_screen_x2 = -1, sel_screen_y1 = -1, sel_screen_y2 = -1;
 
 	dmaFillWords(colcol, *vram, 192*256*2);
@@ -289,7 +310,7 @@ void PatternView::draw(void)
 	if(state->recording == true) {
 		linescol = col_lines_record;
 	} else {
-		linescol = col_lines;
+		linescol = theme->col_lines;
 	}
 	
 	s16 realrow;
@@ -302,7 +323,7 @@ void PatternView::draw(void)
 				drawHLine(0, PV_CELL_HEIGHT*i, getEffectiveWidth(), linescol);
 			} else {
 				drawHLine(PV_BORDER_WIDTH, PV_CELL_HEIGHT*i,
-					 getEffectiveWidth()-PV_BORDER_WIDTH, col_sublines);
+					 getEffectiveWidth()-PV_BORDER_WIDTH, theme->col_sublines);
 			}
 		}
 	}
@@ -313,7 +334,7 @@ void PatternView::draw(void)
 	}
 	
 	// Cursor bar (highlight)
-	drawGradient(cb_col1, cb_col2, 0, PV_CURSORBAR_Y, getEffectiveWidth(), PV_CELL_HEIGHT);
+	drawGradient(theme->cb_col1, theme->cb_col2, 0, PV_CURSORBAR_Y, getEffectiveWidth(), PV_CELL_HEIGHT);
 	if(selection_exists == true) {
 		// Cursor bar (highlighted component)
 		if (	(sel_screen_y1 <= PV_CURSORBAR_Y + 1)
@@ -328,19 +349,19 @@ void PatternView::draw(void)
 	// Playback box
 	int playback_box_y = PV_CURSORBAR_Y + (state->getPlaybackRow()-state->getCursorRow())*PV_CELL_HEIGHT;
 	if (playback_box_y >= 0 && playback_box_y < 192) {
-		drawBox(0, playback_box_y, getEffectiveWidth(), PV_CELL_HEIGHT+1);
+		drawBox(0, playback_box_y, getEffectiveWidth(), PV_CELL_HEIGHT+1, theme->col_outline);
 	}
 
 	// Cursor
-	drawBox(PV_BORDER_WIDTH-1+(state->channel-hscrollpos)*getCellWidth(), PV_CURSORBAR_Y, getCellWidth()+1, PV_CELL_HEIGHT+1);
-	drawGradient(cb_col1_highlight, cb_col2_highlight, PV_BORDER_WIDTH+(state->channel-hscrollpos)*getCellWidth(),
+	drawBox(PV_BORDER_WIDTH-1+(state->channel-hscrollpos)*getCellWidth(), PV_CURSORBAR_Y, getCellWidth()+1, PV_CELL_HEIGHT+1, theme->col_icon ); // TODO NOPE the cursor box needs its own theme colour
+	drawGradient(theme->col_list_highlight1, theme->col_list_highlight2, PV_BORDER_WIDTH+(state->channel-hscrollpos)*getCellWidth(),
 				 PV_CURSORBAR_Y+1, getCellWidth()-1, PV_CELL_HEIGHT-1);
 	
 	// Numbers on the left
 	s16 ip;
 	for(ip=state->getCursorRow()-getCursorBarPos();ip<=state->getCursorRow()+getCursorBarPos()+1;++ip) {
 		if((ip>=0)&&(ip<ptnlen)) {
-			drawHexByte(ip, 1, 2+(ip+getCursorBarPos()-state->getCursorRow())*PV_CHAR_HEIGHT, col_left_numbers);
+			drawHexByte(ip, 1, 2+(ip+getCursorBarPos()-state->getCursorRow())*PV_CHAR_HEIGHT, theme->col_row_number);
 		}
 	}
 	
@@ -367,9 +388,9 @@ void PatternView::draw(void)
 	char numberstr[3];
 	for(u16 i=0;i<getNumVisibleChannels();++i)
 	{
-		drawFullBox(PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 14, 11, col_bg);
+		drawFullBox(PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 14, 11, theme->col_bg);
 		sniprintf(numberstr, sizeof(numberstr), "%-2x", (u8) (hscrollpos+i));
-		drawString(numberstr, PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 255, col_lines);
+		drawString(numberstr, PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 255, theme->col_lines);
 	}
 	
 	// Mute / Solo buttons
@@ -383,31 +404,31 @@ void PatternView::draw(void)
 		{
 			if(mute_channels[chn] == true)
 			{
-				mute_col1 = cb_col1_highlight;
-				mute_col2 = cb_col2_highlight;
+				mute_col1 = theme->cb_col1_highlight;
+				mute_col2 = theme->cb_col2_highlight;
 			}
 			else
 			{
-				mute_col1 = cb_col1;
-				mute_col2 = cb_col2;
+				mute_col1 = theme->cb_col1; // TODO use theme var
+				mute_col2 = theme->cb_col2;
 			}
 			drawGradient(mute_col1, mute_col2, MUTE_X(i), MUTE_Y, MUTE_WIDTH, MUTE_HEIGHT);
-			drawString("m", PV_BORDER_WIDTH+i*getCellWidth()+9, 0, 255);
+			drawString("m", PV_BORDER_WIDTH+i*getCellWidth()+9, 0, 255, theme->col_text);
 		}
 		
 		if(solo_channels[chn] == true)
 		{
-			solo_col1 = cb_col1_highlight;
-			solo_col2 = cb_col2_highlight;
+			solo_col1 = theme->cb_col1_highlight;
+			solo_col2 = theme->cb_col2_highlight;
 		}
 		else
 		{
-			solo_col1 = cb_col1;
-			solo_col2 = cb_col2;
+			solo_col1 = theme->cb_col1;
+			solo_col2 = theme->cb_col2;
 		}
 		
 		drawGradient(solo_col1, solo_col2, SOLO_X(i), SOLO_Y, SOLO_WIDTH, SOLO_HEIGHT);
-		drawString("s", PV_BORDER_WIDTH+i*getCellWidth()+20, 0, 255);
+		drawString("s", PV_BORDER_WIDTH+i*getCellWidth()+20, 0, 255, theme->col_text);
 	}
 }
 

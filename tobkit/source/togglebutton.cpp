@@ -50,7 +50,7 @@ void ToggleButton::penDown(u8 x, u8 y)
 {
 	penIsDown = true;
 	on = !on;
-	draw();
+	draw(1);
 	if(onToggle) {
 		onToggle(on);
 	}
@@ -59,7 +59,7 @@ void ToggleButton::penDown(u8 x, u8 y)
 void ToggleButton::penUp(u8 x, u8 y)
 {
 	penIsDown = false;
-	draw();
+	draw(0);
 }
 
 void ToggleButton::buttonPress(u16 button)
@@ -107,16 +107,17 @@ bool ToggleButton::getState(void)
 
 #define MAX(x,y)	((x)>(y)?(x):(y))
 
-void ToggleButton::draw(void)
+void ToggleButton::draw(int state)
 {
 	if(!isExposed()) return;
 
 	u16 bg = (color_bg & BIT(15)) ? color_bg : theme->col_dark_ctrl;
 	drawFullBox(0, 0, width, height, bg);
-	drawBorder();
+	drawBorder(theme->col_outline);
 
 	u16 col;
-	if(penIsDown) {
+	// if(penIsDown) {
+	if(state) {
 		if(on) {
 			col = bg;
 		} else {

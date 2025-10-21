@@ -22,7 +22,7 @@ limitations under the License.
 class GroupBox: public Widget
 {
 	public:
-		GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible=true);
+		GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible=true, bool _albino=false);
 		~GroupBox();
 		
 		void pleaseDraw(void);
@@ -31,7 +31,7 @@ class GroupBox: public Widget
 		
 	private:
 		char *text;
-		
+		bool is_albino;
 		void draw(void);
 };
 

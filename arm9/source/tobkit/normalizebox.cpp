@@ -117,7 +117,7 @@ void NormalizeBox::draw(void)
 	drawGradient(theme->col_list_highlight1, theme->col_list_highlight2, 0, 0, width, 16);
 	drawHLine(0,16, width, RGB15(0,0,0)|BIT(15));
 	drawFullBox(0, 17, width, NORMALIZEBOX_HEIGHT-17, theme->col_light_bg);
-	drawBorder();
+	drawBorder(theme->col_outline);
 	
 	u8 titlewidth = getStringWidth(title)+5;
 	drawString(title, (NORMALIZEBOX_WIDTH-titlewidth)/2, 2, titlewidth+5);

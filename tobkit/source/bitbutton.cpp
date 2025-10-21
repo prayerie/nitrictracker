@@ -82,7 +82,7 @@ void BitButton::draw(u8 down)
 	} else {
 		drawGradient(theme->col_light_ctrl_disabled, theme->col_dark_ctrl_disabled, 0, 0, width, height);
 	}
-	drawBorder();
+	drawBorder(theme->col_outline);
 
-	drawMonochromeIcon(bmpx, bmpy, bmpwidth, bmpheight, bitmap);
+	drawMonochromeIcon(bmpx, bmpy, bmpwidth, bmpheight, bitmap, theme->col_icon);
 }

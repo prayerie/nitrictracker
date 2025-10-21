@@ -22,11 +22,12 @@ limitations under the License.
 
 /* ===================== PUBLIC ===================== */
 
-Button::Button(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _visible)
+Button::Button(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _visible, bool _flat)
 	:Widget(_x, _y, _width, _height, _vram, _visible),
 	 penIsDown(false), caption(0)
 {
 	onPush = 0;
+	flat = _flat;
 }
 
 Button::~Button()
@@ -37,7 +38,7 @@ Button::~Button()
 void Button::registerPushCallback(void (*onPush_)(void)) {
 	onPush = onPush_;
 }
-		
+
 // Drawing request
 void Button::pleaseDraw(void) {
 	draw(penIsDown);
@@ -83,14 +84,14 @@ void Button::draw(u8 down) {
 	if(enabled)
 	{
 		if(down) {
-			drawGradient(theme->col_light_ctrl, theme->col_dark_ctrl, 0, 0, width, height);
+			drawGradient(theme->col_light_ctrl, flat? theme->col_light_ctrl : theme->col_dark_ctrl, 0, 0, width, height);
 		} else {
-			drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 0, 0, width, height);
+			drawGradient(theme->col_dark_ctrl, flat? theme->col_dark_ctrl : theme->col_light_ctrl, 0, 0, width, height);
 		}
 	} else {
 		drawGradient(theme->col_light_ctrl_disabled, theme->col_dark_ctrl_disabled, 0, 0, width, height);
 	}
-	drawBorder();
+	drawBorder(theme->col_outline);
 	
-	drawString(caption, (width-getStringWidth(caption))/2, height/2-5);
+	drawString(caption, (width-getStringWidth(caption))/2, height/2-5, 255U, theme->col_text);
 }

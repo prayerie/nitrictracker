@@ -66,6 +66,8 @@
 #include "icon_wrench_raw.h"
 #include "icon_trumpet_raw.h"
 
+#include "icon_jump_raw.h"
+
 #include "icon_flp_raw.h"
 #include "icon_copy_raw.h"
 #include "icon_cut_raw.h"
@@ -101,6 +103,7 @@
 #include "action.h"
 
 #include <fat.h>
+
 #ifdef MIDI
 #include <libdsmi.h>
 #include <dswifi9.h>
@@ -125,7 +128,11 @@ u16 *main_vram_front, *main_vram_back, *sub_vram;
 char *launch_path = NULL;
 
 bool typewriter_active = false;
+bool recordbox_active = false;
 bool exit_requested = false;
+bool file_sel_visible = false;
+bool sampledisp_visible = false;
+
 volatile bool redraw_main_requested = false;
 
 u16 keys_that_are_repeated = KEY_UP | KEY_DOWN | KEY_LEFT | KEY_RIGHT;
@@ -137,6 +144,7 @@ u16 mykey_LEFT = KEY_LEFT, mykey_UP = KEY_UP, mykey_RIGHT = KEY_RIGHT, mykey_DOW
 
 GUI *gui;
 
+#pragma region // todo remove this lol 
 // <Misc GUI>
 	Button *buttonrenameinst, *buttonrenamesample, *buttontest, *buttonstopnote, *buttonemptynote, *buttondelnote, *buttoninsnote2,
 		*buttondelnote2, *buttoninsnote;
@@ -218,6 +226,7 @@ GUI *gui;
 	GroupBox *gblinesbeat;
 	NumberBox *nblinesbeat;
 	Button *btnconfigsave;
+	Button *btntheme1, *btntheme2, *btntheme3, *btntheme4;
 // </Settings Gui>
 
 // <Main Screen>
@@ -230,6 +239,44 @@ GUI *gui;
 	NumberSlider *nsnotevolume, *nseffectcmd, *nseffectpar;
 	Label *labelmute, *labelnotevol, *labeleffectcmd, *labeleffectpar, *labeltranspose;
 	CheckBox *cbtoggleeffects;
+
+
+	Button *buttonhex_1;
+	Button *buttonhex_2;
+	Button *buttonhex_3;
+	Button *buttonhex_4;
+	Button *buttonhex_5;
+	Button *buttonhex_6;
+	Button *buttonhex_7;
+	Button *buttonhex_8;
+	Button *buttonhex_9;
+	Button *buttonhex_A;
+	Button *buttonhex_B;
+	Button *buttonhex_C;
+	Button *buttonhex_D;
+	Button *buttonhex_E;
+	Button *buttonhex_F;
+	Button* buttonhex_0;
+
+	Button *buttontranspose_add1;
+	Button *buttontranspose_add12;
+	Button *buttontranspose_sub1;
+	Button *buttontranspose_sub12;
+
+	Button* buttonhex_cpyabove; // copy and move down one line  TODO: interpolation similar to renoise 
+	Button* buttonhex_clearprm;
+	Button* buttonhex_clearcmd;
+	Button* buttonhex_clearall;
+
+	Button* buttonhex_cursorright;
+	Button* buttonhex_cursorleft;
+
+	Button* buttonfx_reference;
+
+	ToggleButton *cbhex_linejump;
+	GroupBox *labelfx1;
+	// todo
+	Label* nseffectcurrent;
 // </Main Screen>
 
 // <Things that suddenly pop up>
@@ -237,7 +284,9 @@ GUI *gui;
 	MessageBox *mb;
 // </Things that suddenly pop up>
 
-u16 *b1n, *b1d;
+#pragma endregion
+	
+u16* b1n, * b1d;
 int lastx, lasty;
 Song *song;
 State *state;
@@ -250,7 +299,16 @@ ActionBuffer *action_buffer = NULL;
 u8 dsmw_lastnotes[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 u8 dsmw_lastchannels[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+uint16 currentfx = 0;
+int currentfx_i = 3; // todo also remove this 
+
+u16 currentfx_cmd = 0; // todo u8?
+u16 currentfx_prm = 0;
+
 bool fastscroll = false;
+
+bool fx_jumponkey = false;
+
 
 uint16* map;
 
@@ -258,6 +316,7 @@ uint16* map;
 void handleButtons(u16 buttons, u16 buttonsheld);
 void HandleTick(void);
 void handlePotPosChangeFromSong(u16 newpotpos);
+void handleInstPlayed(u8 inst, u8 note, u32 offs);
 void drawMainScreen(void);
 void redrawSubScreen(void);
 void showMessage(const char *msg, bool error);
@@ -442,6 +501,10 @@ void handleNoteStroke(u8 note)
 		kb->setKeyLabel(note, label);
 	}
 
+	
+	if (song->getInstrument(state->instrument) != NULL) {
+		handleInstPlayed(state->instrument, state->basenote + note, 0);
+	}
 	// Play the note
 	// Send "play inst" command
 	CommandPlayInst(state->instrument, state->basenote + note, 255, 255); // channel==255 -> search for free channel
@@ -470,6 +533,8 @@ void handleNoteRelease(u8 note, bool moved)
 		DC_FlushAll();
 		redraw_main_requested = true;
 	}
+
+	sampledisplay->setPlaying(false); // todo will this conflict lol
 
 	CommandStopInst(255);
 
@@ -592,6 +657,8 @@ void handleSampleChange(u16 newsample)
 		return;
 
 	Sample *smp = inst->getSample(newsample);
+
+	
 	sampleChange(smp);
 }
 void handleInstChange(u16 newinst)
@@ -615,6 +682,9 @@ void handleInstChange(u16 newinst)
 		sampleChange(NULL);
 		return;
 	}
+
+	// sampledisplay->setSample(inst->getSampleForNote(state->basenote + 12));
+	CommandSelectInst((u8)newinst);
 }
 
 void updateLabelSongLen(void)
@@ -1195,11 +1265,13 @@ void stop(void)
 
 void stopPlay(void)
 {
+	
 	state->pause = false;
 	state->setPlaybackRow(0);
 
 	stop();
 
+	sampledisplay->setPlaying(false);
 	buttonpause->hide();
 	buttonplay->show();
 }
@@ -1295,6 +1367,17 @@ void handlePotPosChangeFromSong(u16 newpotpos)
 
 	// Update other GUI Elements
 	updateGuiToNewPattern(song->getPotEntry(state->potpos));
+}
+
+void handleInstPlayed(u8 inst, u8 note, u32 offs) {
+	if (!sampledisp_visible)
+		return;
+	
+	sampledisplay->setPlaying(false);
+	Instrument *inst_ = song->getInstrument(inst);
+	Sample *samp_ = inst_->getSampleForNote(note);
+	sampledisplay->setupCursorForSample(samp_, note, offs);
+	sampledisplay->setPlaying(true);
 }
 
 #ifdef MIDI
@@ -1672,6 +1755,7 @@ void handleRowChangeFromSong(u16 row)
 void handleStop(void)
 {
 	state->playing = false;
+	sampledisplay->setPlaying(false);
 }
 
 void handleSamplePreviewToggled(bool on)
@@ -1790,6 +1874,37 @@ void setNoteVol(u16 vol)
 	}
 }
 
+u16 setHexDigit(u16 value, int n_digi, u8 replacement) {
+	return (value & ~(0xf << n_digi * 4)) | replacement << (n_digi * 4);
+}
+
+void transpose(s8 semitones) {
+	u16 sel_x1, sel_y1, sel_x2, sel_y2;
+	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+    CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
+	bool transposed_anything = false;
+    if (fill != NULL && fill->valid())
+    {
+		for (u16 chn = sel_x1; chn <= sel_x2; chn++)
+			for (u16 row = sel_y1; row <= sel_y2; row++)
+			{
+				Cell cell = song->getPattern(song->getPotEntry(state->potpos))[chn][row];
+				if (cell.note == EMPTY_NOTE || cell.note == STOP_NOTE || cell.note + semitones >= 254 || cell.note + semitones < 0) { // disallow going above the maximum note, or going below the minimum note
+					continue;
+				}
+
+				transposed_anything = true;
+				
+				cell.note += semitones;
+				*fill->ptr(chn - sel_x1, row - sel_y1) = cell;
+			}
+		if (transposed_anything) // don't clog up the undo buffer if the action is empty
+			action_buffer->add(song, new MultipleCellSetAction(state, sel_x1, sel_y1, fill, false));
+			
+		redraw_main_requested = true;
+	}
+}
+
 void setEffectCommand(u16 eff)
 {
 	u16 sel_x1, sel_y1, sel_x2, sel_y2;
@@ -1854,6 +1969,25 @@ void handleTranspose(s32 transpose_amount)
 	}
 }
 
+void setEffectCommand(u16 eff)
+{
+	u16 sel_x1, sel_y1, sel_x2, sel_y2;
+	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+    CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
+    if (fill != NULL && fill->valid())
+    {
+		for (u16 chn = sel_x1; chn <= sel_x2; chn++)
+			for (u16 row = sel_y1; row <= sel_y2; row++)
+			{
+				Cell cell = song->getPattern(song->getPotEntry(state->potpos))[chn][row];
+				cell.effect = eff;
+				*fill->ptr(chn - sel_x1, row - sel_y1) = cell;
+			}
+        action_buffer->add(song, new MultipleCellSetAction(state, sel_x1, sel_y1, fill, false));
+		redraw_main_requested = true;
+	}
+}
+
 void handleTransposeUp(void)
 {
 	u16 keysheld = keysHeld();
@@ -1880,7 +2014,63 @@ void handleSetNoteVol(void)
 
 void handleToggleEffectsVisibility(bool on)
 {
-  pv->toggleEffectsVisibility(on);
+	
+	pv->toggleEffectsVisibility(on);
+	if (on) {
+		nseffectcurrent->show();
+		buttonhex_0->show();
+		buttonhex_1->show();
+		buttonhex_2->show();
+		buttonhex_3->show();
+		buttonhex_4->show();
+		buttonhex_5->show();
+		buttonhex_6->show();
+		buttonhex_7->show();
+		buttonhex_8->show();
+		buttonhex_9->show();
+		buttonhex_A->show();
+		buttonhex_B->show();
+		buttonhex_C->show();
+		buttonhex_D->show();
+		buttonhex_E->show();
+		buttonhex_F->show();
+		buttonhex_clearall->show();
+		buttonhex_clearcmd->show();
+		buttonhex_clearprm->show();
+		buttonhex_cpyabove->show();
+		labelfx1->show();
+		cbhex_linejump->show();
+		buttonhex_cursorleft->show();
+		buttonhex_cursorright->show();
+		
+	}
+	else {
+		nseffectcurrent->hide();
+		buttonhex_0->hide();
+		buttonhex_1->hide();
+		buttonhex_2->hide();
+		buttonhex_3->hide();
+		buttonhex_4->hide();
+		buttonhex_5->hide();
+		buttonhex_6->hide();
+		buttonhex_7->hide();
+		buttonhex_8->hide();
+		buttonhex_9->hide();
+		buttonhex_A->hide();
+		buttonhex_B->hide();
+		buttonhex_C->hide();
+		buttonhex_D->hide();
+		buttonhex_E->hide();
+		buttonhex_F->hide();
+		buttonhex_clearall->hide();
+		buttonhex_clearcmd->hide();
+		buttonhex_clearprm->hide();
+		buttonhex_cpyabove->hide();
+		labelfx1->hide();
+		cbhex_linejump->hide();
+		buttonhex_cursorleft->hide();
+		buttonhex_cursorright->hide();
+	}
 }
 
 // number slider
@@ -1900,6 +2090,202 @@ void handleEffectParamChanged(s32 eff_par)
 {
 	setEffectParam(eff_par);
 }
+
+u16 getEffect()
+{
+	Cell cell = song->getPattern(song->getPotEntry(state->potpos))[state->channel][state->getCursorRow()];
+	u16 effectcmd = cell.effect;
+	u16 effectprm = cell.effect_param;
+	if (effectcmd == 0xff)
+		effectcmd = 0;
+
+	currentfx_cmd = effectcmd;
+	currentfx_prm = effectprm;
+	currentfx = (effectcmd << 8) | effectprm;
+
+	return currentfx;
+}
+
+void movefxcursorto(int pos=0) {
+	nseffectcurrent->move_hl(((3 - currentfx_i) * 7));
+}
+
+void handleHexKeyboardInput(uint8 _key, bool clr = false, bool cpy = false) {
+	const char* _msg = "Typed '%x' on the hex keyboard. Command is now %x, parameter is now %x. Full val is %x.";
+	char __msg[256];
+	
+
+	if (currentfx == 0) {
+		nocashMessage("current fx empty");
+	}
+
+	if (clr)
+		currentfx = 0xff00;
+	else if (cpy) {
+		u16 prevfx = getEffect();
+		handleNoteAdvanceRow();
+		setEffect(prevfx & 0xff, (prevfx & 0xff00) >> 8); // so the action buffer only updates once
+		redraw_main_requested = true;
+		return;
+	}
+	else {
+		currentfx = setHexDigit(getEffect(), currentfx_i--, _key); // get note effect each time, otherwise it will misbehave
+
+
+		if (fx_jumponkey)
+			currentfx_i++;
+
+		if (currentfx_i == -1) {
+			currentfx_i = 3;
+		}
+	}
+
+	
+	
+	
+
+	// nseffectcurrent->__drawHLine(1, 34, 90, RGB15(0,0,0)|BIT(15));
+	// memcpy(currentfx, fxbuf, sizeof(fxbuf));
+	const char* msg2 = "%04x";
+	char ___msg[16];
+	snprintf(___msg, sizeof(___msg), msg2, currentfx);
+	nocashMessage(___msg);
+
+	movefxcursorto();
+	nseffectcurrent->setCaption(___msg);
+	currentfx_cmd = (currentfx & 0xff00) >> 8;
+	currentfx_prm = currentfx & 0xff;
+	snprintf(__msg, sizeof(__msg), _msg, _key, currentfx_cmd, currentfx_prm, currentfx);
+	nocashMessage(__msg);
+
+	handleEffectCommandChanged(currentfx_cmd);
+	handleEffectParamChanged(currentfx_prm);
+	// setEffect(currentfx_prm, currentfx);
+
+	if (fx_jumponkey)
+		handleNoteAdvanceRow();
+	
+	redraw_main_requested = true;
+}
+
+// ------------- temp mess lol ------------- //
+// TODO add register button callback fn which takes one argument
+
+void handleHexKeyboard_0() {
+	// settings->setTheme(new Theme(0));
+	redrawSubScreen();
+	drawMainScreen();
+	handleHexKeyboardInput(0x0);
+}
+
+void handleHexKeyboard_1() {
+	// settings->setTheme(new Theme(1));
+	redrawSubScreen();
+	drawMainScreen();
+	handleHexKeyboardInput(0x1);
+}
+
+void handleHexKeyboard_2() {
+	handleHexKeyboardInput(0x2);
+}
+
+void handleHexKeyboard_3() {
+	handleHexKeyboardInput(0x3);
+}
+
+void handleHexKeyboard_4() {
+	handleHexKeyboardInput(0x4);
+}
+
+void handleHexKeyboard_5() {
+	handleHexKeyboardInput(0x5);
+}
+
+void handleHexKeyboard_6() {
+	handleHexKeyboardInput(0x6);
+}
+
+void handleHexKeyboard_7() {
+	handleHexKeyboardInput(0x7);
+}
+
+void handleHexKeyboard_8() {
+	handleHexKeyboardInput(0x8);
+}
+
+void handleHexKeyboard_9() {
+	handleHexKeyboardInput(0x9);
+}
+
+void handleHexKeyboard_A() {
+	handleHexKeyboardInput(0xA);
+}
+
+void handleHexKeyboard_B() {
+	handleHexKeyboardInput(0xB);
+}
+
+void handleHexKeyboard_C() {
+	handleHexKeyboardInput(0xC);
+}
+
+void handleHexKeyboard_D() {
+	handleHexKeyboardInput(0xD);
+}
+
+void handleHexKeyboard_E() {
+	handleHexKeyboardInput(0xE);
+}
+
+void handleHexKeyboard_F() {
+	handleHexKeyboardInput(0xF);
+}
+
+void handleHexKeyboard_clr() {
+	handleHexKeyboardInput(0, true);
+}
+
+void handleHexKeyboard_cpy() {
+	handleHexKeyboardInput(0, false, true);
+}
+
+void handleHexKeyboard_L() {
+	currentfx_i++;
+	if (currentfx_i == 4) {
+		currentfx_i = 0;
+	}
+	movefxcursorto();
+
+	redraw_main_requested = true;
+}
+
+void handleHexKeyboard_R() {
+	currentfx_i--;
+	if (currentfx_i == -1) {
+		currentfx_i = 3;
+	}
+	movefxcursorto();
+
+	redraw_main_requested = true;
+}
+
+void handleFxHelpPressed() {
+	char msg[256];
+	sniprintf(msg, 256, "dfsgdsfgld\ndfljkgsdlfhj\ndfog;u");
+	mb = new MessageBox(&main_vram_front, msg, 2, "track on!", deleteMessageBox, "exit", false);
+	gui->registerOverlayWidget(mb, 0, MAIN_SCREEN);
+	mb->reveal();
+}
+
+
+
+
+
+
+
+// ----------------------------------------- //
+
+
 
 // button
 void handleSetEffectParam(void)
@@ -1994,6 +2380,26 @@ void handleLoopToggle(bool on)
 	CommandSetPatternLoop(on || state->scroll_lock);
 }
 
+void handleFxLinejumpToggled(bool on) {
+	fx_jumponkey = on;
+}
+
+void handleButtonAdd1() {
+	transpose(1);
+}
+
+void handleButtonAdd12() {
+	transpose(12);
+}
+
+void handleButtonSub1() {
+	transpose(-1);
+}
+
+void handleButtonSub12() {
+	transpose(-12);
+}
+
 void handleToggleScrollLock(bool on)
 {
 	state->scroll_lock = on;
@@ -2043,7 +2449,7 @@ void handleRecordSampleOK(void)
 	// Kill record box
 	gui->unregisterOverlayWidget();
 	delete recordbox;
-
+	recordbox_active = false;
 	// Turn off the mic
 	CommandMicOff();
 
@@ -2077,6 +2483,7 @@ void handleRecordSampleCancel(void)
 	// Kill record box
 	gui->unregisterOverlayWidget();
 	delete recordbox;
+	recordbox_active = false;
 
 	// Turn off the mic
 	CommandMicOff();
@@ -2113,7 +2520,7 @@ void handleRecordSample(void)
 	gui->registerOverlayWidget(recordbox, KEY_A | KEY_B, SUB_SCREEN);
 
 	recordbox->reveal();
-
+	recordbox_active = true;
 }
 
 
@@ -2194,17 +2601,17 @@ void swapPatternButtons(Handedness handedness)
 	u8 x, y;
 	pv->getPos(&x, &y, NULL, NULL);
 
-	Handedness current_handedness = x == 30 ? LEFT_HANDED : RIGHT_HANDED;
+	Handedness current_handedness = x == 95 ? LEFT_HANDED : RIGHT_HANDED; // Handedness probably shouldn't be detected from pv x-pos but then it's failsafe so idk
 	if (current_handedness == handedness) return;
 
 	std::vector<Widget*> widgets = gui->getWidgets(MAIN_SCREEN);
-	int offset = (handedness == LEFT_HANDED) ? -225 : 225;
+	int offset = (handedness == LEFT_HANDED) ? -225 + 65: 225 - 65;
 
 	for (Widget* widget : widgets) {
 		widget->getPos(&x, &y, NULL, NULL);
 		widget->setPos(x + offset, y);
 	}
-	pv->setPos(handedness == LEFT_HANDED ? 30 : 0, 0);
+	pv->setPos(handedness == LEFT_HANDED ? 95 : 0, 0);
 
 	redraw_main_requested = true;
 }
@@ -2293,7 +2700,7 @@ void showMessage(const char *msg, bool error)
 void showAboutBox(void)
 {
 	char msg[256];
-	sniprintf(msg, 256, "NitrousTracker " VERSION " (" GIT_HASH ")");
+	sniprintf(msg, 256, "NitricTracker " VERSION " (" GIT_HASH ")");
 	mb = new MessageBox(&sub_vram, msg, 2, "track on!", deleteMessageBox, "exit", showExitBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
@@ -2333,6 +2740,14 @@ void handleCopy(void)
 
 void handlePaste(void)
 {
+	int ptn_n_rows = song->getPatternLength(state->potpos);
+	int n_channels = song->getChannels();
+	u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
+	u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
+	
+	CellArray *new_i;
+	u8 new_height = clipboard->height() - rows_over;
+	u8 new_width = clipboard->width() - cols_over;
 	if(clipboard != NULL) {
 		int ptn_n_rows = song->getPatternLength(state->potpos);
 		int n_channels = song->getChannels();
@@ -2550,6 +2965,14 @@ void sample_reverse(void)
 	sampledisplay->setSample(smp);
 }
 
+
+void handleMainTabboxTabChange(u8 tab) {
+	file_sel_visible = tab == 1;
+	sampledisp_visible = tab == 2;
+	sampledisplay->setIsVisibleToUser(sampledisp_visible);
+}
+
+
 void sampleTabBoxChage(u8 tab)
 {
 	if( (tab==0) or (tab==1) )
@@ -2693,6 +3116,60 @@ void handleMuteChannelsChanged(bool *muted_channels)
 	DC_FlushAll();
 }
 
+void handleThemeBtn(u8 theme) {
+	settings->setTheme(new Theme(theme)); // todo - custom sliders for each colour instead of just preset themes
+	settings->setThemeId(theme);
+	gui->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	numberboxadd->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	labeladd->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	numberboxoctave->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	labeloct->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	tabbox->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	buttonundo->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	buttonredo->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	lbinstruments->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	cbscrolllock->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	nsbpm->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	nsrestartpos->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	nbtempo->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	buttonins->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	buttondel->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	buttonemptynote->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	pv->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl); // todo fix the background colours
+	pixmaplogo->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	// tw->setTheme(settings->getTheme(), settings->getTheme()->col_dark_ctrl);
+	
+	// gui->unregisterWidget(pv);
+	// pv->pleaseDraw();
+	// pv->
+	// gui->draw();
+	// free(gui);
+	// setupGUI(true);
+	redraw_main_requested = true;
+	
+	redrawSubScreen();
+	// action_buffer->register_change_callback(actionBufferChangeCallback);
+
+	// applySettings();
+}
+
+void handleBtnTheme1() {
+	handleThemeBtn(0);
+}
+
+void handleBtnTheme2() {
+	handleThemeBtn(2);
+}
+
+void handleBtnTheme3() {
+	handleThemeBtn(1);
+}
+
+void handleBtnTheme4() {
+	handleThemeBtn(3);
+}
+
+
 void handleSampleLoopChanged(u8 val)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
@@ -2798,6 +3275,7 @@ void sampleDrawToggle(bool on)
 
 void setupGUI(bool dldi_enabled)
 {
+	
 	gui = new GUI();
 	gui->setTheme(settings->getTheme(), settings->getTheme()->col_dark_bg);
 
@@ -2817,6 +3295,8 @@ void setupGUI(bool dldi_enabled)
 	tabbox->addTab(icon_sample_raw, 2);
 	tabbox->addTab(icon_trumpet_raw, 3);
 	tabbox->addTab(icon_wrench_raw, 4);
+
+	tabbox->registerTabChangeCallback(handleMainTabboxTabChange);
 
 	// <Disk OP GUI>
 		fileselector = new FileSelector(38, 21, 100, 111, &sub_vram);
@@ -3231,7 +3711,7 @@ void setupGUI(bool dldi_enabled)
 		rbgoutput->registerChangeCallback(handleOutputModeChange);
 
 		gblinesbeat = new GroupBox(89, 62, 40, 28, &sub_vram);
-		gblinesbeat->setText("l/b");
+		gblinesbeat->setText("lpb");
 		nblinesbeat = new NumberBox(93, 72, 32, 17, &sub_vram, settings->getLinesPerBeat(), 1, 64);
 		nblinesbeat->registerChangeCallback(handleLinesBeatChange);
 
@@ -3255,6 +3735,22 @@ void setupGUI(bool dldi_enabled)
 		btnconfigsave->setCaption("save");
 		btnconfigsave->registerPushCallback(saveConfig);
 
+		btntheme1 = new Button(6, 133, 14, 14, &sub_vram);
+		btntheme1->setCaption("0");
+		btntheme1->registerPushCallback(handleBtnTheme1);
+
+		btntheme2 = new Button(24, 133, 14, 14, &sub_vram);
+		btntheme2->setCaption("1");
+		btntheme2->registerPushCallback(handleBtnTheme2);
+
+		btntheme3 = new Button(42, 133, 14, 14, &sub_vram);
+		btntheme3->setCaption("2");
+		btntheme3->registerPushCallback(handleBtnTheme3);
+
+		btntheme4 = new Button(60, 133, 14, 14, &sub_vram);
+		btntheme4->setCaption("3");
+		btntheme4->registerPushCallback(handleBtnTheme4);
+
 #ifdef MIDI
 		btndsmwtoggleconnect->registerPushCallback(dsmiToggleConnect);
 		cbdsmwsend->registerToggleCallback(handleDsmiSendToggled);
@@ -3275,6 +3771,19 @@ void setupGUI(bool dldi_enabled)
 		tabbox->registerWidget(gboutput, 0, 4);
 		tabbox->registerWidget(nblinesbeat, 0, 4);
 		tabbox->registerWidget(gblinesbeat, 0, 4);
+
+		tabbox->registerWidget(btntheme1, 0, 4);
+		tabbox->registerWidget(btntheme2, 0, 4);
+		tabbox->registerWidget(btntheme3, 0, 4);
+		tabbox->registerWidget(btntheme4, 0, 4);
+
+		// tabbox->registerWidget(btnconfigsave, 0, 5);
+		// tabbox->registerWidget(gbhandedness, 0, 5);
+		// tabbox->registerWidget(rboutputmono, 0, 5);
+		// tabbox->registerWidget(rboutputstereo, 0, 5);
+		// tabbox->registerWidget(gboutput, 0, 5);
+		// tabbox->registerWidget(nblinesbeat, 0, 5);
+		// tabbox->registerWidget(gblinesbeat, 0, 5);
 #if !defined(SHOW_ALL_SETTINGS)
 		if (isDSiMode())
 #endif
@@ -3383,7 +3892,7 @@ void setupGUI(bool dldi_enabled)
 		buttontransposeup->registerPushCallback(handleTransposeUp);
 
 #ifdef ENABLE_EFFECT_MENU
-		cbtoggleeffects = new CheckBox(195, 32, 30, 12, &main_vram_back, true, true, true);
+		cbtoggleeffects = new CheckBox(7, 115, 30, 12, &sub_vram, true, true);
 		cbtoggleeffects->setCaption("fx");
 		cbtoggleeffects->registerToggleCallback(handleToggleEffectsVisibility);
 
@@ -3406,6 +3915,153 @@ void setupGUI(bool dldi_enabled)
 		buttonseteffectpar = new Button(196, 110, 28, 12, &main_vram_back);
 		buttonseteffectpar->setCaption("set");
 		buttonseteffectpar->registerPushCallback(handleSetEffectParam);
+
+		// todo add hex support to NumberBox
+		
+		
+		
+
+		// todo organise this properly in line with the other widgets lol
+
+		int hexkeypad_base_x = 166;
+		int hekeypad_base_y = 105;
+		int gap_x = -1;
+		int gap_y = -1;
+		int btn_size = 14;
+
+		buttontranspose_add1 = new Button(		hexkeypad_base_x + 32, 			hekeypad_base_y - 104 + (btn_size + 1) * 1, 						 	btn_size * 2 - 2, 	btn_size, 	&main_vram_back, true);
+		buttontranspose_add1->setCaption("+1");
+		buttontranspose_add1->registerPushCallback(handleButtonAdd1);
+		buttontranspose_add12 = new Button(		hexkeypad_base_x + 32, 			hekeypad_base_y - 104,  	btn_size * 2 - 2, 	btn_size, 	&main_vram_back, true);
+		buttontranspose_add12->setCaption("+12");
+		buttontranspose_add12->registerPushCallback(handleButtonAdd12);
+	buttontranspose_sub1 = new Button(			hexkeypad_base_x + 32, 			hekeypad_base_y - 104 + (btn_size + 1) * 2,		 btn_size * 2 - 2,	btn_size, 	&main_vram_back, true);
+		buttontranspose_sub1->setCaption("-1");
+		buttontranspose_sub1->registerPushCallback(handleButtonSub1);
+		buttontranspose_sub12 = new Button(		hexkeypad_base_x + 32, 			hekeypad_base_y - 104 + (btn_size + 1) * 3,		 btn_size * 2 - 2,	btn_size,	 &main_vram_back, true);
+		buttontranspose_sub12->setCaption("-12");
+		buttontranspose_sub12->registerPushCallback(handleButtonSub12);
+
+		nseffectcurrent = new Label(hexkeypad_base_x, hekeypad_base_y - gap_y - btn_size + 1, btn_size * 2 + gap_x + 6, 13, &main_vram_back, true, false, false, true, true);
+		nseffectcurrent->setCaption("0000");
+
+		cbhex_linejump = new ToggleButton(hexkeypad_base_x, hekeypad_base_y - 30, btn_size + 2, btn_size, &main_vram_back, true);
+		cbhex_linejump->setBitmap(icon_jump_raw, 12, 12);
+		// cbhex_linejump->setColorOff(RGB15(0, 0, 0) | BIT(15));
+		// cbhex_linejump->setColorOn(RGB15(24, 24, 0) | BIT(15));
+		// cbhex_linejump->setCaption("jump");
+		cbhex_linejump->registerToggleCallback(handleFxLinejumpToggled);
+		cbhex_linejump->setColorOff(RGB15(0, 0, 0) | BIT(15));
+
+		// labelmute = new Label(hexkeypad_base_x + gap_x + btn_size, hekeypad_base_y - 30, 32, 8, &main_vram_back, false, true);
+		// labelmute->setCaption("mute");
+
+		labelfx1 = new GroupBox(hexkeypad_base_x - 3, hekeypad_base_y - 43, 59, 124, &main_vram_back, true, true);
+		labelfx1->setText("fx");
+
+		buttonfx_reference = new Button(hexkeypad_base_x + gap_x + btn_size + 5, hekeypad_base_y - 31, btn_size + 2, btn_size, &main_vram_back, true);
+		buttonfx_reference->setCaption("?");
+		buttonfx_reference->registerPushCallback(handleFxHelpPressed);
+		// todo use bitbutton of arrows used elsewhere
+		buttonhex_cursorright = new Button(gap_x + 0 + hexkeypad_base_x + btn_size * 3,  hekeypad_base_y - gap_y - btn_size + 1, btn_size - 2, btn_size - 1, &main_vram_back);
+		buttonhex_cursorright->setCaption(">");
+		buttonhex_cursorright->registerPushCallback(handleHexKeyboard_R);
+
+		buttonhex_cursorleft = new Button(gap_x + 4 + hexkeypad_base_x + btn_size * 2, hekeypad_base_y - gap_y - btn_size + 1, btn_size - 1, btn_size - 1, &main_vram_back);
+		buttonhex_cursorleft->setCaption("<");
+		buttonhex_cursorleft->registerPushCallback(handleHexKeyboard_L);
+
+		// ---- row 1
+		buttonhex_1 = new Button(hexkeypad_base_x, hekeypad_base_y, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_1->setCaption("1");
+		buttonhex_1->registerPushCallback(handleHexKeyboard_1);
+
+
+		buttonhex_2 = new Button(hexkeypad_base_x + gap_x + btn_size, hekeypad_base_y, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_2->setCaption("2");
+		buttonhex_2->registerPushCallback(handleHexKeyboard_2);
+
+		buttonhex_3 = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 2), hekeypad_base_y, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_3->setCaption("3");
+		buttonhex_3->registerPushCallback(handleHexKeyboard_3);
+
+		buttonhex_4 = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 3), hekeypad_base_y, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_4->setCaption("4");
+		buttonhex_4->registerPushCallback(handleHexKeyboard_4);
+
+		// ---- row 2
+		buttonhex_5 = new Button(hexkeypad_base_x, hekeypad_base_y + gap_y + btn_size, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_5->setCaption("5");
+		buttonhex_5->registerPushCallback(handleHexKeyboard_5);
+
+		buttonhex_6 = new Button(hexkeypad_base_x + gap_x + btn_size, hekeypad_base_y + gap_y + btn_size, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_6->setCaption("6");
+		buttonhex_6->registerPushCallback(handleHexKeyboard_6);
+		
+		buttonhex_7 = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 2), hekeypad_base_y + gap_y + btn_size, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_7->setCaption("7");
+		buttonhex_7->registerPushCallback(handleHexKeyboard_7);
+
+		buttonhex_8 = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 3), hekeypad_base_y + gap_y + btn_size, btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_8->setCaption("8");
+		buttonhex_8->registerPushCallback(handleHexKeyboard_8);
+
+		// ---- row 3
+		buttonhex_9 = new Button(hexkeypad_base_x, hekeypad_base_y + ((gap_y + btn_size) * 2), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_9->setCaption("9");
+		buttonhex_9->registerPushCallback(handleHexKeyboard_9);
+
+		buttonhex_0 = new Button(hexkeypad_base_x + gap_x + btn_size, hekeypad_base_y + ((gap_y + btn_size) * 2), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_0->setCaption("0");
+		buttonhex_0->registerPushCallback(handleHexKeyboard_0);
+
+		buttonhex_A = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 2), hekeypad_base_y + ((gap_y + btn_size) * 2), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_A->setCaption("a");
+		buttonhex_A->registerPushCallback(handleHexKeyboard_A);
+
+		buttonhex_B = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 3), hekeypad_base_y + ((gap_y + btn_size) * 2), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_B->setCaption("b");
+		buttonhex_B->registerPushCallback(handleHexKeyboard_B);
+
+		// ---- row 4
+		buttonhex_C = new Button(hexkeypad_base_x, hekeypad_base_y + ((gap_y + btn_size) * 3), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_C->setCaption("c");
+		buttonhex_C->registerPushCallback(handleHexKeyboard_C);
+
+		buttonhex_D = new Button(hexkeypad_base_x + gap_x + btn_size, hekeypad_base_y + ((gap_y + btn_size) * 3), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_D->setCaption("d");
+		buttonhex_D->registerPushCallback(handleHexKeyboard_D);
+
+		buttonhex_E = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 2), hekeypad_base_y + ((gap_y + btn_size) * 3), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_E->setCaption("e");
+		buttonhex_E->registerPushCallback(handleHexKeyboard_E);
+
+		buttonhex_F = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 3), hekeypad_base_y + ((gap_y + btn_size) * 3), btn_size, btn_size, &main_vram_back, true, true);
+		buttonhex_F->setCaption("f");
+		buttonhex_F->registerPushCallback(handleHexKeyboard_F);
+
+		// ---- row 5
+		// TODO use bitbuttons for both of these
+		buttonhex_clearcmd = new Button(hexkeypad_base_x, hekeypad_base_y + ((gap_y + btn_size) * 4), btn_size * 2 + gap_x, btn_size, &main_vram_back);
+		buttonhex_clearcmd->setCaption("00--");
+		buttonhex_clearcmd->registerPushCallback(handleHexKeyboard_C);
+
+		buttonhex_clearprm = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 2), hekeypad_base_y + ((gap_y + btn_size) * 4), btn_size * 2 + gap_x, btn_size, &main_vram_back);
+		buttonhex_clearprm->setCaption("--00");
+		buttonhex_clearprm->registerPushCallback(handleHexKeyboard_D);
+
+		// ---- row 6
+		buttonhex_cpyabove = new Button(hexkeypad_base_x, hekeypad_base_y + ((gap_y + btn_size) * 5), btn_size * 2 + gap_x, btn_size, &main_vram_back);
+		buttonhex_cpyabove->setCaption("cp");
+		buttonhex_cpyabove->registerPushCallback(handleHexKeyboard_cpy);
+
+		buttonhex_clearall = new Button(hexkeypad_base_x + ((gap_x + btn_size) * 2), hekeypad_base_y + ((gap_y + btn_size) * 5), btn_size * 2 + gap_x, btn_size, &main_vram_back);
+		buttonhex_clearall->setCaption("clr");
+		buttonhex_clearall->registerPushCallback(handleHexKeyboard_clr);
+
+		
+		// my alternative input method consisting of 0-9 A-F buttons
+
 #endif
 
 		//buttoncut         = new BitButton(232,  52, 22, 21, &main_vram_back, icon_cut_raw, 16, 16, 3, 2);
@@ -3456,13 +4112,53 @@ void setupGUI(bool dldi_enabled)
 		gui->registerWidget(buttontransposedown, 0, MAIN_SCREEN);
 		gui->registerWidget(buttontransposeup, 0, MAIN_SCREEN);
 #ifdef ENABLE_EFFECT_MENU
-		gui->registerWidget(cbtoggleeffects, 0, MAIN_SCREEN);
-		gui->registerWidget(labeleffectcmd, 0, MAIN_SCREEN);
-		gui->registerWidget(nseffectcmd, 0, MAIN_SCREEN);
-		gui->registerWidget(buttonseteffectcmd, 0, MAIN_SCREEN);
-		gui->registerWidget(labeleffectpar, 0, MAIN_SCREEN);
-		gui->registerWidget(nseffectpar, 0, MAIN_SCREEN);
-		gui->registerWidget(buttonseteffectpar, 0, MAIN_SCREEN);
+		// gui->registerWidget(cbtoggleeffects, 0, MAIN_SCREEN);
+		tabbox->registerWidget(cbtoggleeffects, 0, 4);
+		// gui->registerWidget(labeleffectcmd, 0, MAIN_SCREEN);
+		// gui->registerWidget(nseffectcmd, 0, MAIN_SCREEN);
+		// gui->registerWidget(buttonseteffectcmd, 0, MAIN_SCREEN);
+		// gui->registerWidget(labeleffectpar, 0, MAIN_SCREEN);
+		// gui->registerWidget(nseffectpar, 0, MAIN_SCREEN);
+		// gui->registerWidget(buttonseteffectpar, 0, MAIN_SCREEN);
+
+		gui->registerWidget(buttontranspose_add1, 0, MAIN_SCREEN);
+		gui->registerWidget(buttontranspose_add12, 0, MAIN_SCREEN);
+		gui->registerWidget(buttontranspose_sub1, 0, MAIN_SCREEN);
+		gui->registerWidget(buttontranspose_sub12, 0, MAIN_SCREEN);
+		// fx keyboard
+		gui->registerWidget(buttonhex_0, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_1, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_2, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_3, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_4, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_5, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_6, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_7, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_8, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_9, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_A, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_B, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_C, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_D, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_E, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_F, 0, MAIN_SCREEN);
+
+		gui->registerWidget(buttonhex_cpyabove, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_clearall, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_clearcmd, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_clearprm, 0, MAIN_SCREEN);
+
+		gui->registerWidget(buttonhex_cursorright, 0, MAIN_SCREEN);
+		gui->registerWidget(buttonhex_cursorleft, 0, MAIN_SCREEN);
+
+		gui->registerWidget(cbhex_linejump, 0, MAIN_SCREEN);
+		gui->registerWidget(labelfx1, 0, MAIN_SCREEN);
+		// gui->registerWidget(buttonfx_reference, 0, MAIN_SCREEN);
+		// gui->registerWidget(buttonhex_F, 0, MAIN_SCREEN);
+
+		gui->registerWidget(nseffectcurrent, 0, MAIN_SCREEN);
+
+		
 #else
 		pv->toggleEffectsVisibility(false);
 #endif
@@ -3528,12 +4224,26 @@ void move_to_top(void)
 	redraw_main_requested = true;
 }
 
+void move_inst_to_top(void)
+{
+	handleInstChange(0);
+	lbinstruments->select(0);
+}
+
+void move_filebrowser_to_top(void)
+{
+	fileselector->select(0);
+	File *file_at_cursor = fileselector->getSelectedFile();
+	if (file_at_cursor != NULL)
+		handleFileChange(*file_at_cursor);
+}
+
 // Update the state for certain keypresses
 void handleButtons(u16 buttons, u16 buttonsheld)
 {
 	u16 ptnlen = song->getPatternLength(song->getPotEntry(state->potpos));
 
-	if(!(buttonsheld & mykey_R))
+	if(!(buttonsheld & mykey_R) && !(buttonsheld & mykey_Y))
 	{
 		if(buttons & mykey_UP)
 		{
@@ -3569,7 +4279,42 @@ void handleButtons(u16 buttons, u16 buttonsheld)
 			state->setCursorRow(newrow);
 
 			pv->updateSelection();
+
 			redraw_main_requested = true;
+		}
+		
+	}
+
+	if(!(buttonsheld & mykey_R) && (buttonsheld & mykey_Y))
+	{
+		int move_by = (buttonsheld & mykey_B) ? 4 : 1;
+		ListBox *target = file_sel_visible ? fileselector : lbinstruments;
+		u16 cur_i = target->getidx();
+		u16 new_i = cur_i;
+		if(buttons & mykey_DOWN) {
+			u8 max = file_sel_visible ? fileselector->getFileCount() : 0x7f;
+			new_i = cur_i + move_by >= max ? max : cur_i + move_by;
+			target->select(new_i);
+			File *file_at_cursor = fileselector->getSelectedFile();
+			if (file_sel_visible) {
+				File *file_at_cursor = fileselector->getSelectedFile();
+				if (file_at_cursor != NULL)
+					handleFileChange(*file_at_cursor);
+			} else {
+				handleInstChange(new_i);
+			}
+		}
+
+		if(buttons & mykey_UP) {
+			new_i = cur_i - move_by <= 0 ? 0 : cur_i - move_by;
+			target->select(new_i);
+			if (file_sel_visible) {
+				File *file_at_cursor = fileselector->getSelectedFile();
+				if (file_at_cursor != NULL)
+					handleFileChange(*file_at_cursor);
+			} else {
+				handleInstChange(new_i);
+			}
 		}
 	}
 
@@ -3618,6 +4363,10 @@ void handleButtons(u16 buttons, u16 buttonsheld)
 	}
 	*/
 #endif
+	char fxstring[32];
+	u16 _cfx = getEffect();
+	snprintf(fxstring, sizeof(fxstring), "%04x", _cfx);
+	nseffectcurrent->setCaption(fxstring);
 }
 
 void VblankHandler(void)
@@ -3628,6 +4377,9 @@ void VblankHandler(void)
 	u16 keysup = keysUp();
 	u16 keysheld = keysHeld();
 	touchRead(&touch);
+
+	if (!recordbox_active)
+		sampledisplay->movePlaybackPos();
 
 	if(keysdown & KEY_TOUCH)
 	{
@@ -3653,11 +4405,20 @@ void VblankHandler(void)
 
 	if(keysheld & mykey_R)
 	{
-		if(keysheld & mykey_DOWN)
-			move_to_bottom();
-		else if(keysheld & mykey_UP)
-			move_to_top();
+		if(!(keysheld & mykey_Y)) {
+			if(keysheld & mykey_DOWN)
+				move_to_bottom();
+			else if(keysheld & mykey_UP)
+				move_to_top();
+		} else if (keysheld & mykey_UP)
+			if (file_sel_visible)
+				move_filebrowser_to_top();
+			else
+				move_inst_to_top();
 	}
+	
+
+	
 
 	if(keysdown & ~KEY_TOUCH)
 	{
@@ -3823,7 +4584,6 @@ int main(int argc, char **argv) {
 #endif
 
 	powerOn(POWER_ALL_2D);
-
 	// Adjust screens so that the main screen is the top screen
 	lcdMainOnTop();
 
@@ -3841,7 +4601,7 @@ int main(int argc, char **argv) {
 	int piano_bg = bgInitSub(0, BgType_Text4bpp, BgSize_T_256x256, 1, 0);
 	bgSetScroll(piano_bg, 0, 0);
 	bgSetPriority(piano_bg, 2);
-
+	
 	// SUB_BG1 for Typewriter Tiles
 	videoBgEnableSub(1);
 	int typewriter_bg = bgInitSub(1, BgType_Text4bpp, BgSize_T_256x256, 12, 1);
@@ -3906,6 +4666,7 @@ int main(int argc, char **argv) {
 	state = new State();
 
 	settings = new Settings(launch_path, fat_success);
+	settings->setTheme(new Theme(settings->getThemeId())); // todo - custom sliders for each colour instead of just preset themes
 
 	clearMainScreen();
 	clearSubScreen();
@@ -3919,10 +4680,12 @@ int main(int argc, char **argv) {
 	RegisterStopCallback(handleStop);
 	RegisterPlaySampleFinishedCallback(handlePreviewSampleFinished);
 	RegisterPotPosChangeCallback(handlePotPosChangeFromSong);
+	RegisterInstPlayed(handleInstPlayed);
 
 	setupSong();
 
-	CommandSetSong(song);
+	CommandSetSong(song); 
+
 
 	setupGUI(fat_success);
 	action_buffer->register_change_callback(actionBufferChangeCallback);

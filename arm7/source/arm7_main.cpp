@@ -72,7 +72,7 @@ int main(int argc, char ** argv) {
 //---------------------------------------------------------------------------------
 	enableSound();
 	readUserSettings();
-	ledBlink(LED_ALWAYS_ON);
+	ledBlink(LED_ALWAYS_ON); // metronome?
 	touchInit();
 	irqInit();
 	SetYtrigger(80);

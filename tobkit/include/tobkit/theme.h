@@ -23,6 +23,7 @@ class Theme
 {
 	public:
 		Theme();
+		Theme(int theme);
 		
 		u16 col_bg;
 		u16 col_dark_bg;
@@ -40,6 +41,14 @@ class Theme
 		u16 col_icon;
 		u16 col_text;
 		u16 col_signal;
+		// patternview
+		u16 cb_col1;
+		u16 cb_col2;
+		u16 cb_col1_highlight;
+		u16 cb_col2_highlight;
+		u16 col_lines;
+		u16 col_sublines;
+		u16 col_row_number;
 };
 
 #endif

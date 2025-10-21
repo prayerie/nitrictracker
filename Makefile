@@ -8,11 +8,11 @@ BLOCKSDSEXT	?= /opt/blocksds/external
 # User config
 # ===========
 
-NAME		:= nitroustracker
+NAME		:= nitrictracker
 export VERSION		?= 0.4.16
 export GIT_HASH		:= $(shell git rev-parse --short HEAD)
 
-GAME_TITLE	:= NitrousTracker
+GAME_TITLE	:= NitricTracker
 GAME_AUTHOR	:= v$(VERSION)
 GAME_ICON	:= icon.bmp
 

@@ -103,7 +103,9 @@ class PatternView: public Widget {
 		// Fills the parameters with the selection coordinates. Returns true if no selection exists.
 		bool getSelection(u16 *sel_x1, u16 *sel_y1, u16 *sel_x2, u16 *sel_y2);
 		
-		// Sets the selection to the given coordinates
+        void setTheme(Theme* theme_, u16 bgcolor_);
+
+// Sets the selection to the given coordinates
 		void setSelection(u16 sel_x1, u16 sel_y1, u16 sel_x2, u16 sel_y2);
 		
 		void clearSelection(void);
@@ -296,8 +298,10 @@ class PatternView: public Widget {
 		Song *song;
 		State *state;
 
-		u16 col_lines, col_sublines, col_lines_record, cb_col1, cb_col2, cb_col1_highlight,
-			cb_col2_highlight, col_left_numbers, col_notes, col_instr, col_volume, col_effect, col_effect_param,
+		Settings *settings;
+		Theme *theme; 
+
+		u16 col_lines_record, col_notes, col_instr, col_volume, col_effect, col_effect_param,
 			col_notes_dark, col_instr_dark, col_volume_dark, col_effect_dark, col_effect_param_dark, col_bg, cb_sel_highlight;
 		
 		u16 hscrollpos, lines_per_beat;

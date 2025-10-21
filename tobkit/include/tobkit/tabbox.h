@@ -53,7 +53,7 @@ class TabBox: public Widget {
 		void reveal(void);
 		
 		void setTheme(Theme *theme_, u16 bgcolor_);
-		
+
 	private:
 		u8 findGuiIdx(u8 tabidx);
 		void draw(void);	
@@ -61,7 +61,8 @@ class TabBox: public Widget {
 	
 		u8 orientation;
 		u8 icon_size;
-		u8 currentgui;
+		u8 currentgui; // todo i think gui is tab idx but idk lol
+
 		std::vector<u8> tab_idx_map;
 		std::vector<const u8*> icons;
 		std::vector<GUI> guis;

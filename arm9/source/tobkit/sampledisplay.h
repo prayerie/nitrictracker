@@ -27,6 +27,7 @@
 
 #include "tobkit/widget.h"
 #include "ntxm/sample.h"
+#include "ntxm/ntxmtools.h"
 
 #define LOOP_TRIANGLE_SIZE				8
 #define SNAP_TO_ZERO_CROSSING_RADIUS	32 // Search 32 samples to the left and to the right to find a zero crossing
@@ -51,6 +52,7 @@ class SampleDisplay: public Widget {
 		void penUp(u8 px, u8 py);
 		void penMove(u8 px, u8 py);
 
+		
 		// Drawing request
 		void pleaseDraw(void);
 
@@ -67,6 +69,29 @@ class SampleDisplay: public Widget {
 		void setInactive(void);
 
 		void setDrawMode(bool _on);
+		void movePlaybackPos();
+		void resetPlaybackPos(void) {
+			playback_pos = offset_raw;
+			cursorDonePlaying = false;
+		}
+		bool isVisibleToUser(void) {
+			return visibletouser;
+		}
+
+		void setIsVisibleToUser(bool vis) {
+			visibletouser = vis;
+		}
+		
+		void setOffsetRaw(u32 offs_r) {
+			
+			offset_raw = offs_r;
+		}
+
+		void setupCursorForSample(Sample *_samp, u8 note=NULL, u32 offset_raw_ = 0);
+		
+		
+		void setPlaying(bool _playing);
+
 
 		void showLoopPoints(void);
 		void hideLoopPoints(void);
@@ -76,18 +101,38 @@ class SampleDisplay: public Widget {
 	private:
 		// Finds a zero corssing in the sample near pos, returns sample when successful, -1 else
 		long find_zero_crossing_near(long pos);
-
+		u32 offset_raw = 0;
 		void draw(void);
 		void scroll(u32 newscrollpos);
 		void calcScrollThingy(void);
 		void zoomIn(void);
 		void zoomOut(void);
+		void setCurrentSampleFreq(u32 _freq) {
+			currentSampleFreq = _freq;
+		}
+		void setCurrentSampleLen(u32 _len) {
+			
+			currentSampleLen = _len;
+		} // todo define these in sampledisplay.cpp
 		u32 pixelToSample(s32 pixel);
 		s32 sampleToPixel(u32 sample);
 
 		Sample *smp;
-
+		u32 currentSampleFreq;
+		u32 currentSampleLen;
 		u32 selstart, selend;
+		u32 cursor_pos;
+		u32 playback_pos;
+		u16 *previous_cursor_pixels;
+		u32 previous_playback_pos_px;
+		bool loop_rev = false;
+
+		void drawPlayabckPosCursor(bool clear_);
+
+		bool playing = false;
+		bool cursorDonePlaying = false;
+		bool visibletouser = false;
+
 		bool selection_exists;
 
 		bool pen_is_down;

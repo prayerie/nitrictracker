@@ -125,7 +125,7 @@ void NumberSliderRelNote::draw(void)
 	}
 	
 	// This draws the connection
-	drawVLine(4, 6, 5, theme->col_outline);
+	drawVLine(4, 6, 5, theme->col_icon);
 	
 	// This draws the down-arrow
 	for(j=2;j>=0;j--) {
@@ -134,7 +134,7 @@ void NumberSliderRelNote::draw(void)
 		}
 	}
 	
-	drawBox(0, 0, 9, 17);
+	drawBox(0, 0, 9, 17, theme->col_outline);
 	
 	// Number display
 	drawFullBox(9,1,width-10,height-2,theme->col_lighter_bg);
@@ -161,8 +161,8 @@ void NumberSliderRelNote::draw(void)
 	
 	char notestr[4];
 	sniprintf(notestr, sizeof(notestr), "%s%u", nstr, octave);
-	drawString(notestr, 10, 5);
+	drawString(notestr, 10, 5, 255U, theme->col_text);
 	
 	// Border
-	drawBorder();
+	drawBorder(theme->col_outline);
 }

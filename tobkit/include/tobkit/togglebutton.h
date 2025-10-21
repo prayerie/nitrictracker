@@ -47,7 +47,7 @@ class ToggleButton: public Widget {
 		inline void setColorBg(u16 value) { color_bg = value; }
 
 	private:
-		void draw(void);
+		void draw(int state=0);
 
 		void (*onToggle)(bool);
 

@@ -68,6 +68,8 @@ class FileSelector: public ListBox {
 		
 		// Set current dir
 		void setDir(std::string dir);
+
+		u16 getFileCount(void);
 	
 	protected:
 		void draw(void);

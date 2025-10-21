@@ -41,14 +41,14 @@ SampleDisplay::SampleDisplay(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, S
 	pen_on_zoom_in(false), pen_on_zoom_out(false),
 	pen_on_scroll_left(false), pen_on_scroll_right(false), pen_on_scrollthingy(false), pen_on_scrollbar(false),
 	scrollthingypos(0), scrollthingywidth(width-2*SCROLLBUTTON_HEIGHT+2), pen_x_on_scrollthingy(0), zoom_level(0), scrollpos(0),
-	snap_to_zero_crossings(true), draw_mode(false)
+	snap_to_zero_crossings(true), draw_mode(false), previous_cursor_pixels((u16*)malloc(sizeof(u16) * DRAW_HEIGHT + 1))
 {
 
 }
 
 SampleDisplay::~SampleDisplay(void)
 {
-
+	free(previous_cursor_pixels);
 }
 
 void SampleDisplay::penDown(u8 px, u8 py)
@@ -109,7 +109,8 @@ void SampleDisplay::penDown(u8 px, u8 py)
 
 		// Else: Stylus on the sample.
 		else if(active) {
-			selstart = selend = pixelToSample(px - x);
+			selstart = selend = cursor_pos = pixelToSample(px - x);
+			
 			selection_exists = false;
 			draw();
 		}
@@ -122,6 +123,7 @@ void SampleDisplay::penUp(u8 px, u8 py)
 	if(selend < selstart) {
 		u32 tmp = selstart;
 		selstart = selend;
+		cursor_pos = selstart;
 		selend = tmp;
 	}
 
@@ -156,6 +158,8 @@ void SampleDisplay::penUp(u8 px, u8 py)
 
 void SampleDisplay::penMove(u8 px, u8 py)
 {
+	
+
 	if((smp==0) || ( (active==false) && (loop_points_visible==false) && (draw_mode == false) ) )
 		   return;
 
@@ -313,6 +317,23 @@ void SampleDisplay::setSnapToZeroCrossing(bool snap)
 	snap_to_zero_crossings = snap;
 }
 
+void SampleDisplay::setPlaying(bool _playing)  {
+	playing = _playing;
+	cursorDonePlaying = !_playing;
+	drawPlayabckPosCursor(true);
+}
+
+void SampleDisplay::setupCursorForSample(Sample *_samp, u8 note, u32 offs_raw)  {
+	setOffsetRaw(offs_raw);
+	u8 note_ = note == NULL ? 12 : note;
+	loop_rev = false;
+	smp = _samp;
+	previous_playback_pos_px = NULL; // don't draw a column from a different sample over the new one;
+	playback_pos = 0;
+	setCurrentSampleFreq(smp->getPlaybackFreq(note));
+	setCurrentSampleLen(smp->getNSamples());
+	resetPlaybackPos();
+}
 /* ===================== PRIVATE ===================== */
 
 long SampleDisplay::find_zero_crossing_near(long pos)
@@ -381,6 +402,125 @@ long SampleDisplay::find_zero_crossing_near(long pos)
 	}
 }
 
+// If we draw the whole sample box each time the cursor moves (every vblank),
+// it's a huge waste. So sampledisplay allocates a buffer the length of the 
+// cursor to redraw only over where the cursor previously was(!)
+void SampleDisplay::drawPlayabckPosCursor(bool clear_ = false) {
+	if (smp == NULL || !visibletouser)
+		return;
+
+	if (playback_pos != NULL && (playing || clear_)) {
+		u32 drawpix = sampleToPixel(playback_pos);
+		if (drawpix < x + width) {
+			// void Widget::drawVLine(u8 tx, u8 ty, u8 length, u16 col) {
+			// 	for(int i=0;i<length;++i) {
+			// 		drawPixel(tx, i+ty, col);
+			// 	}
+			// }
+
+			// inline void drawPixel(u8 tx, u8 ty, u16 col) {
+			// 	*(*vram+SCREEN_WIDTH*(y+ty)+x+tx) = col;
+			// }
+			s32 draw_at_x_ = sampleToPixel(playback_pos);
+			bool dontdraw = draw_at_x_ >= (s32) width + 1;
+
+			u16 col_cursor = theme->col_light_ctrl;
+
+			// draw the previous pixels on the previous cursor pos
+			if (previous_cursor_pixels != NULL && previous_playback_pos_px != NULL) 
+				for(int i=0;i<DRAW_HEIGHT+1;++i) {
+					*(*vram+SCREEN_WIDTH*(y+i+1)+x+previous_playback_pos_px) = previous_cursor_pixels[i];
+				}
+
+			// backup only the pixel values that were underneath the cursor 
+			for(int i=0;i<DRAW_HEIGHT+1;++i) {
+				// can't just memcpy the whole chunk in one go
+				u16 *vram_dest_addr = (*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x_);
+				memcpy(previous_cursor_pixels+i, vram_dest_addr, sizeof(u16));
+			}
+
+			// ...and finally, draw the cursor itself
+			// (or just get rid of it)
+			if (!clear_ && !dontdraw && draw_at_x_ != previous_playback_pos_px) {
+				for(int i=0;i<DRAW_HEIGHT+1;++i) {
+					*(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x_) = col_cursor;
+					previous_playback_pos_px = draw_at_x_;
+				}
+			}
+
+			// if (clear_)
+			// 	pleaseDraw();
+				
+
+		}
+	}
+}
+
+
+// void SampleDisplay::movePlaybackPos() {
+// 	if (smp == NULL)
+// 		return;
+// 	if (cursorDonePlaying)
+// 		return;
+
+// 	u8 looptype = smp->getLoop();
+// 	playback_pos += (currentSampleFreq / 60) * loop_rev ? -1 : 1;
+// 	if (loop_rev && playback_pos <= smp->getLoopStart()) {
+// 		playback_pos = smp->getLoopStart();
+// 		loop_rev = false;
+// 	}
+// 	if (!loop_rev && looptype != NO_LOOP && (playback_pos >= smp->getLoopStart() + smp->getLoopLength())) {
+// 		if (looptype != PING_PONG_LOOP)
+// 			playback_pos = smp->getLoopStart();
+// 		else {
+// 			playback_pos = smp->getLoopStart() + smp->getLoopLength();
+// 			loop_rev = true;
+// 		}
+// 	}
+// 	if (playback_pos >= currentSampleLen) {
+// 		cursorDonePlaying = true;
+// 		playback_pos = 0;
+// 		drawPlayabckPosCursor(true);
+// 	} else
+// 		drawPlayabckPosCursor();
+// }
+
+// todo check channel and stuff
+void SampleDisplay::movePlaybackPos() {
+	// my_dprintf("Sample pointer is %x. Current sample freq is %u.\n", smp, currentSampleLen);
+	// return;
+	if (smp == NULL || cursorDonePlaying || !visibletouser) {
+		return;
+	}
+
+	u8 looptype = smp->getLoop();
+	if (loop_rev)
+		playback_pos -= currentSampleFreq / 60;
+	else
+		playback_pos += currentSampleFreq / 60;
+
+	if (looptype == PING_PONG_LOOP) {
+		if (loop_rev && playback_pos <= smp->getLoopStart()) {
+			playback_pos = smp->getLoopStart();
+			loop_rev = false;
+		}
+		if (!loop_rev && playback_pos >= smp->getLoopStart() + smp->getLoopLength()) {
+			playback_pos = smp->getLoopStart() + smp->getLoopLength();
+			loop_rev = true;
+		}
+	} else if (looptype != PING_PONG_LOOP && looptype != NO_LOOP && playback_pos >= smp->getLoopStart() + smp->getLoopLength()) {
+		playback_pos = smp->getLoopStart();
+	} if (playback_pos >= currentSampleLen && looptype == NO_LOOP) {
+		// playback_pos = offset_raw;
+		// drawPlayabckPosCursor(true);
+		setPlaying(false);
+		pleaseDraw();
+	} else
+		drawPlayabckPosCursor();
+}
+
+
+
 void SampleDisplay::draw(void)
 {
 	if(!isExposed())
@@ -392,7 +532,7 @@ void SampleDisplay::draw(void)
 	drawFullBox(0, 0, width, height, theme->col_dark_bg);
 	
 	if(active==false) {
-		drawBorder();
+		drawBorder(theme->col_outline);
 	} else {
 		drawBorder(RGB15(31,0,0)|BIT(15));
 	}
@@ -422,7 +562,13 @@ void SampleDisplay::draw(void)
 		if(!dontdraw) {
 			drawFullBox(selleft, 1, selwidth, DRAW_HEIGHT+1, RGB15(31,31,0)|BIT(15));
 		}
+
+		
 	}
+
+
+	
+		
 
 	//
 	// Scrollbar
@@ -459,10 +605,10 @@ void SampleDisplay::draw(void)
 		}
 	}
 
-	drawBox(0, height-9, 9, 9);
+	drawBox(0, height-9, 9, 9, theme->col_outline);
 
 
-	drawBox(0, height-SCROLLBAR_WIDTH, width, SCROLLBAR_WIDTH);
+	drawBox(0, height-SCROLLBAR_WIDTH, width, SCROLLBAR_WIDTH, theme->col_outline);
 
 	// Clear Scrollbar
 	drawGradient(theme->col_medium_bg, theme->col_light_bg, SCROLLBUTTON_HEIGHT, height-SCROLLBAR_WIDTH+1, width-2*SCROLLBUTTON_HEIGHT, SCROLLBAR_WIDTH-2);
@@ -474,7 +620,7 @@ void SampleDisplay::draw(void)
 		drawFullBox(SCROLLBUTTON_HEIGHT+scrollthingypos, height-SCROLLBAR_WIDTH+1, scrollthingywidth-2, SCROLLBAR_WIDTH-2, theme->col_dark_ctrl);
 	}
 
-	drawBox(SCROLLBUTTON_HEIGHT-1+scrollthingypos, height-SCROLLBAR_WIDTH, scrollthingywidth, SCROLLBAR_WIDTH);
+	drawBox(SCROLLBUTTON_HEIGHT-1+scrollthingypos, height-SCROLLBAR_WIDTH, scrollthingywidth, SCROLLBAR_WIDTH, theme->col_outline);
 
 	//
 	// Sample
@@ -484,8 +630,8 @@ void SampleDisplay::draw(void)
 	u16 colortable_selected[DRAW_HEIGHT+2];
 	for(s32 i=0; i<DRAW_HEIGHT+2; i++) {
 		colortable[i] = interpolateColor(theme->col_light_ctrl, theme->col_dark_ctrl, i<<4);
-		//colortable_selected[i] = ((colortable[i] >> 2) & 0x1CE7) | 0x8000;
-		colortable_selected[i] = 0x8000;
+		colortable_selected[i] = ((colortable[i] >> 2) & 0x1CE7) | 0x8000;
+		// colortable_selected[i] = 0x8000;
 	}
 
 	int32 step = divf32(inttof32(smp->getNSamples() >> zoom_level), inttof32(width-2));
@@ -570,6 +716,8 @@ void SampleDisplay::draw(void)
 
 	}
 
+
+	
 	//
 	// Loop Points
 	//

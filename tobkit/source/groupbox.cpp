@@ -21,10 +21,11 @@ limitations under the License.
 
 /* ===================== PUBLIC ===================== */
 
-GroupBox::GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible)
+GroupBox::GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible, bool _albino)
 	:Widget(_x, _y, _width, _height, _vram, _visible)
 {
 	text = (char*) calloc(1, 256);
+	is_albino = _albino;
 }
 
 GroupBox::~GroupBox()
@@ -48,6 +49,18 @@ void GroupBox::setText(const char *text)
 
 void GroupBox::draw(void)
 {
+	u16 col_bg, col_text;
+	if (is_albino)
+	{
+		col_bg = theme->col_dark_bg;
+		col_text = theme->col_lighter_bg;
+	}
+	else
+	{
+		col_bg = theme->col_light_bg;
+		col_text = theme->col_text;
+	}
+
 	drawBox(0, 4, width, height, theme->col_lighter_bg);
 	u16 strwidth = getStringWidth(text);
 	int x = 10;
@@ -56,6 +69,6 @@ void GroupBox::draw(void)
 		if (x < 0) x = 0;
 	}
 
-	drawFullBox(x, 0, strwidth+2, 10, theme->col_light_bg);
-	drawString(text, x+1, 0, width - x - 2);
+	drawFullBox(x, 0, strwidth+2, 10, col_bg);
+	drawString(text, x+1, 0, width - x - 2, col_text);
 }

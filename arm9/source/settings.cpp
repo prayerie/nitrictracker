@@ -101,6 +101,10 @@ fat(use_fat), changed(false)
 			if (!lines_per_beat || lines_per_beat > 64)
 				lines_per_beat = 8;
 
+			getConfigValue(confstr, "Theme", prevstring, 20, "0");
+			theme_id = strtoul(prevstring, NULL, 10);
+			if (!theme_id || theme_id > 8)
+				theme_id = 0;
 			free(confstr);
 		}
 	}
@@ -157,7 +161,18 @@ u8 Settings::getLinesPerBeat(void)
 
 void Settings::setLinesPerBeat(u8 lines_per_beat_)
 {
-	lines_per_beat =  lines_per_beat_;
+	lines_per_beat = lines_per_beat_;
+	changed = true;
+}
+
+u8 Settings::getThemeId(void)
+{
+	return theme_id;
+}
+
+void Settings::setThemeId(u8 theme_id_)
+{
+	theme_id = theme_id_;
 	changed = true;
 }
 
@@ -229,8 +244,8 @@ bool Settings::write(void)
 	boolToString(sample_preview, prevstring);
 	boolToString(stereo_output, stereostring);
 	boolToString(freq_47khz, freqstring);
-	fiprintf(conf, "Samplepath = %s\nSongpath = %s\nHandedness = %s\nSample Preview = %s\nStereo Output = %s\n47kHz Output = %s\nLines Per Beat = %d\n",
-			samplepath, songpath, hstring, prevstring, stereostring, freqstring, lines_per_beat);
+	fiprintf(conf, "Samplepath = %s\nSongpath = %s\nHandedness = %s\nSample Preview = %s\nStereo Output = %s\n47kHz Output = %s\nLines Per Beat = %d\nTheme = %d\n",
+			samplepath, songpath, hstring, prevstring, stereostring, freqstring, lines_per_beat, theme_id);
 	fclose(conf);
 	return true;
 }

@@ -78,5 +78,5 @@ void RadioButton::draw(void)
 	}
 	
 	// Text
-	drawString(label, 13, 0);
+	drawString(label, 13, 0, 255U, theme->col_text);
 }

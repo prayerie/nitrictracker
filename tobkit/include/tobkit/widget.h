@@ -90,8 +90,8 @@ class Widget {
 		virtual void buttonRelease(u16 button) {};
 
 		virtual void setTheme(Theme *theme_, u16 bgcolor_) { theme = theme_; bgcolor = bgcolor_;}
-
-	protected:
+		
+protected:
 		u16 x, y, width, height;
 		bool enabled;
 		u16 **vram;

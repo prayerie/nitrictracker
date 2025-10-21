@@ -1,13 +1,42 @@
 "NitricTracker"
----------
+-
 
-This is my fork of NitrousTracker which I use to haphazardly add features that I would like.
-Once I think a feature is complete and clean up the implementation, I will then PR them upstream. 
-The separate branding is just a vehicle for me to have my own set of poorly implemented features in a build, even if they are rejected upstream.
+This is my fork of NitrousTracker which I use to haphazardly add features that I would like, which I will then pull request when they are cleaned up and done.
+
+Also please note: all the currently unfinished features here will be rewritten. The current implementation is extremely messy and buggy and just me testing how feasible different features are. Also, the current design of the FX keypad is not final.
+
+[Click here to download the latest artifact (nds builds)](https://nightly.link/prayerie/nitrictracker/workflows/build.yaml/new/NitricTracker.zip). Note that I just commit random stuff that may be broken here with no regard for stability, so it will probably suck to use (don't blame me if you get a random guru meditation error and lose any current work). This repo will not have any formal numbered releases, as when the changes here are stable I will just merge request NitrousTracker.
+
+now with a working playback cursor!
+
+![](anm1.gif)
+
+more screenshots:
+
+![](ss0.png)![](ss1.png)![](ss2.png)![](ss3.png)
+
+### Status
+
+- [x] fx keypad
+- [x] cell selection transpose buttons
+- [x] themeing support (mostly done)
+- [ ] sample duplication
+- [ ] somehow include sample edits in undo buffer (maybe?)
+- [ ] inst swap
+- [ ] lowpass/highpass/bandpass filter for sample
+- [x] sample playback cursor
+- [ ] .MOD playback (not write) support
+- [ ] interpolate fx between start and end fx
+- [ ] support for reading openmpt .xm format additions
+
+
+dflkjghdlfkghj
+
 
 original readme:
+```
 
-      NitrousTracker v0.4.16
+      NitrousTracker v0.4.15
      --------------------------------
      original by 0xtob ^ 0x80
           modifications by asie & co.
@@ -115,4 +144,5 @@ if you are missing your name here :-)
     * Last but not least: Vogue and Mr.H of Triton for
       Fasttracker II, the tracker that NitroTracker was
       designed after.
+```
 

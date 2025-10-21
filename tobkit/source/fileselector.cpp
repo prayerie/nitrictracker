@@ -136,6 +136,11 @@ void FileSelector::addFilter(std::string filtername, std::vector<std::string> ex
 	invalidateFileList();
 }
 
+u16 FileSelector::getFileCount(void)
+{
+	return std::size(filelist);
+}
+
 // Selects a filter rule and upates view
 void FileSelector::selectFilter(std::string filtername)
 {

@@ -144,7 +144,6 @@ void NumberSlider::registerChangeCallback(void (*onChange_)(s32)) {
 
 void NumberSlider::draw(void)
 {
-	
 	if(!isExposed())
 		return;
 	
@@ -164,7 +163,7 @@ void NumberSlider::draw(void)
 	}
 	
 	// This draws the connection
-	drawVLine(4, 6, 5, theme->col_outline);
+	drawVLine(4, 6, 5, theme->col_icon);
 	
 	// This draws the down-arrow
 	for(j=2;j>=0;j--) {
@@ -173,7 +172,7 @@ void NumberSlider::draw(void)
 		}
 	}
 	
-	drawBox(0, 0, 9, 17);
+	drawBox(0, 0, 9, 17, theme->col_outline);
 	
 	// Number display
 	drawFullBox(9,1,width-10,height-2,theme->col_lighter_bg);
@@ -184,8 +183,8 @@ void NumberSlider::draw(void)
 	} else {
 		sniprintf(numberstr, sizeof(numberstr), hex ? "%2lx" : "%3ld", value);
 	}
-	drawString(numberstr, 10, 5);
+	drawString(numberstr, 10, 5, 255U, theme->col_text);
 	
 	// Border
-	drawBorder();
+	drawBorder(theme->col_outline);
 }

@@ -312,11 +312,11 @@ void ListBox::draw(void)
 	s8 j, p;
 	for(j=0;j<3;j++) {
 		for(p=-j;p<=j;++p) {
-			drawPixel(width-SCROLLBAR_WIDTH+4+p, j+3, RGB15(0,0,0) | BIT(15));
+			drawPixel(width-SCROLLBAR_WIDTH+4+p, j+3, theme->col_icon);
 		}
 	}
 	
-	drawBox(width-SCROLLBAR_WIDTH, 0, 9, 9);
+	drawBox(width-SCROLLBAR_WIDTH, 0, 9, 9, theme->col_outline);
 	
 	// Lower Button
 	if(buttonstate==SCROLLDOWN) {
@@ -328,13 +328,13 @@ void ListBox::draw(void)
 	// This draws the down-arrow
 	for(j=2;j>=0;j--) {
 		for(p=-j;p<=j;++p) {
-			drawPixel(width-SCROLLBAR_WIDTH+4+p, -j+height-4, RGB15(0,0,0) | BIT(15));
+			drawPixel(width-SCROLLBAR_WIDTH+4+p, -j+height-4, theme->col_icon);
 		}
 	}
 	
-	drawBox(width-SCROLLBAR_WIDTH, height-9, 9, 9);
+	drawBox(width-SCROLLBAR_WIDTH, height-9, 9, 9,theme->col_light_bg);
 	
-	drawBox(width-SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH,height);
+	drawBox(width-SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH,height,theme->col_light_bg);
 	
 	// Clear Scrollbar
 	drawGradient(theme->col_medium_bg, theme->col_light_bg, width-SCROLLBAR_WIDTH+1, SCROLLBUTTON_HEIGHT, SCROLLBAR_WIDTH-2, height-2*SCROLLBUTTON_HEIGHT);
@@ -347,7 +347,7 @@ void ListBox::draw(void)
 		} else {
 			drawFullBox(width-SCROLLBAR_WIDTH+1, SCROLLBUTTON_HEIGHT-1+scrollthingypos, SCROLLBAR_WIDTH-2, scrollthingyheight, theme->col_list_highlight1);
 		}
-		drawBox(width-SCROLLBAR_WIDTH, SCROLLBUTTON_HEIGHT+scrollthingypos-1, SCROLLBAR_WIDTH, scrollthingyheight);
+		drawBox(width-SCROLLBAR_WIDTH, SCROLLBUTTON_HEIGHT+scrollthingypos-1, SCROLLBAR_WIDTH, scrollthingyheight, theme->col_outline);
 	}
 	
 	// Numbers (if enabled)
@@ -363,7 +363,7 @@ void ListBox::draw(void)
 		}
 		for(i=0;(i<height/ROW_HEIGHT)&&(scrollpos+i<elements.size());++i) {
 			sniprintf(numberstr, sizeof(numberstr), "%2x", (u16) (scrollpos+i+offset));
-			drawString(numberstr, 2, ROW_HEIGHT*i+2);
+			drawString(numberstr, 2, ROW_HEIGHT*i+2, 255U, theme->col_text);
 		}
 		
 		contentoffset = COUNTER_WIDTH;
@@ -375,12 +375,12 @@ void ListBox::draw(void)
 	for(i=0;(i<height/ROW_HEIGHT)&&(scrollpos+i<elements.size());++i) {
 		drawString(elements.at(scrollpos+i).c_str(), contentoffset+2, ROW_HEIGHT*i+2,
 			width-contentoffset-2-SCROLLBAR_WIDTH-2,
-			RGB15(0,0,0)|BIT(15),
+			theme->col_text,
 			height-(ROW_HEIGHT*i+4)
 		);
 	}
 	
-	drawBorder();
+	drawBorder(theme->col_outline);
 }
 
 

@@ -22,7 +22,7 @@ limitations under the License.
 class Label: public Widget {
 	public:
 		Label(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _has_border=true,
-		      bool _albino=false, bool _no_bg=false, bool _right_aligned=false);
+		      bool _albino=false, bool _no_bg=false, bool _right_aligned=false, bool _do_hl=false);
 		~Label(void);
 		
 		// Callback registration
@@ -30,19 +30,29 @@ class Label: public Widget {
 		
 		// Drawing request
 		void pleaseDraw(void);
-		
+		void hl(int offs = 0) {
+			Widget::drawHLine(2 + offs, 10, 6, theme->col_list_highlight2);
+		}
+
+		void move_hl(int move_x) {
+			hl_offset_x = move_x;
+			pleaseDraw();
+		}
+
 		// Event calls
 		void penDown(u8 x, u8 y);
 		
 		void setCaption(const char *caption);
 		char *getCaption(void);	
-	
-	private:
-		void draw(void);
+		int hl_offset_x;
 		
+private:
+		void draw(void);
 		void (*onPush)(void);
-		char *caption;
-	
+		char* caption;
+
+		
+		bool do_hl;
 		bool has_border;
 		bool is_albino;
 		bool no_bg;
