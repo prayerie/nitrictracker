@@ -58,7 +58,7 @@
 #define C6	6
 #define C7	7
 #define C8	8
-#define C9	9	
+#define C9	9
 #define A	10
 #define B	11
 #define C	12
@@ -72,6 +72,8 @@
 #define MINUS	37
 #define SHARP	38
 #define SPACE	39
+
+#define GLYPH_3X5_COUNT 40
 
 const u8 notes_chars[] =   {12, 12, 13, 13, 14, 15, 15, 16, 16, 10, 10, 17};
 const u8 notes_signs[] =   {0 , 1 , 0 , 1 , 0 , 0 , 1 , 0 , 1 , 0 , 1 ,  0};
@@ -171,7 +173,7 @@ class PatternView: public Widget {
 			u8 i,j;
 			for(j=0;j<5;++j) {
 				for(i=0;i<3;++i) {
-					u16 pixelidx = 3*40*j+3*c+i;
+					u16 pixelidx = 3*GLYPH_3X5_COUNT*j+3*c+i;
 					if(font_3x5_raw[pixelidx/8]&BIT(pixelidx%8)) {
 						//*(*vram+SCREEN_WIDTH*(2+cy*8+j)+1+cx*4+i) = col;
 						*(*vram+SCREEN_WIDTH*(y+cy+j)+x+cx+i) = col;
