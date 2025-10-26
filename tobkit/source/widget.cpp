@@ -339,12 +339,10 @@ u32 Widget::getStringWidth(const char *str, u16 limit)
 	u32 res = 0;
 	for(u16 i=0; i<limit; ++i, ++str) {
 		char c = *str;
-		if (c == '\0') {
-			return res;
-		}
+		if (c == '\0') break;
 		res += font_8x11.char_widths[font_8x11.char_index[(u8) *str]] + 1;
 	}
-	return res;
+	return res ? res - 1 : 0;
 }
 
 ITCM_CODE
