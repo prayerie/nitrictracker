@@ -1,8 +1,8 @@
 
-      NitrousTracker v0.4.16
+          NitrousTracker v0.4.16
      --------------------------------
      original by 0xtob ^ 0x80
-          modifications by asie & co.
+          fork by NitrousTracker devs
 
 -- About
 
@@ -22,6 +22,10 @@ any folder of your memory card and start tracking!
 
 -- Community
 
+Unofficial Discord community, operated by deadpahn:
+
+    https://discord.gg/KdWJZHtGAU
+
 Forum:
 
     http://modarchive.org/forums/index.php?board=79.0
@@ -39,11 +43,6 @@ What you can do:
         If you have something that isn't already on that list, feel
         free to add it.
 
-        Keep in mind that many reported requests remain preserved
-        on the old issue tracker, now at:
-
-        https://github.com/0xtob/nitrotracker/issues
-
     Become a NitrousTracker developer!
 
         The source and all the info on how to get started is here:
@@ -52,25 +51,24 @@ What you can do:
 
         If you want to contribute a pull request, go right ahead!
 
--- Contact
-
-Get in touch with other NitrousTracker users in the official
-The NitroTracker Forum (see above).
-
 -- Thanks
 
-Big thanks to 0xtob for the work on NitroTracker and for
-making it available under a free software license.
+Big thanks to 0xtob for original the work on NitroTracker,
+as well as for making it available under a free software
+license.
 
 I'd also like to thank reinvdwoerd for their original
 work and ideas regarding improving NitroTracker, started
-shortly prior to my own work!
+shortly prior to my own work, as well as fincs for his
+insightful FeOS fork of NitroTracker.
 
-AntonioND's BlocksDS toolchain has allowed incorporating
-many long put off backend improvements. It builds on the
-work of many giants, including the dozens of contributors
-to devkitPro-maintained libraries comprising the devkitARM
-toolchain, who should also be thanked and acknowledged.
+Thanks to all NitrousTracker contributors:
+
+Arikari405, exelotl, LeviathaninWaves, prayerie, RachelBirdy
+
+Thanks to all BlocksDS contributors:
+
+    https://blocksds.skylyrac.net/docs/introduction/credits/
 
 0xtob originally thanked:
 
