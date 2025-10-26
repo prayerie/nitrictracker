@@ -26,12 +26,13 @@ using namespace tobkit;
 GroupBox::GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible)
 	:Widget(_x, _y, _width, _height, _vram, _visible)
 {
-	text = (char*) calloc(1, 256);
+	text = NULL;
 }
 
 GroupBox::~GroupBox()
 {
-	free(text);
+	if (this->text != NULL)
+		free(this->text);
 }
 
 void GroupBox::pleaseDraw(void)
@@ -42,7 +43,9 @@ void GroupBox::pleaseDraw(void)
 
 void GroupBox::setText(const char *text)
 {
-	strncpy(this->text, text, 255);
+	if (this->text != NULL)
+		free(this->text);
+	this->text = strdup(text);
 	pleaseDraw();
 }
 
@@ -51,6 +54,9 @@ void GroupBox::setText(const char *text)
 void GroupBox::draw(void)
 {
 	drawBox(0, 4, width, height, theme->col_lighter_bg);
+	if (text == NULL)
+		return;
+	
 	u16 strwidth = getStringWidth(text);
 	int x = 10;
 	if (x+4+strwidth > width) {

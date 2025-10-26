@@ -34,8 +34,7 @@ MessageBox::MessageBox(u16 **_vram, const char *message, u8 n_buttons, ...)
 	:Widget((SCREEN_WIDTH-MB_MIN_WIDTH)/2, (SCREEN_HEIGHT-MB_HEIGHT)/2, MB_MIN_WIDTH, MB_HEIGHT, _vram),
 	n_buttons(n_buttons)
 {
-	msg = (char*)calloc(1, strlen(message)+1);
-	strcpy(msg, message);
+	msg = strdup(message);
 
 	// Go through the list of given captions/callback pointers and add a button for each of them
 	callbacks = (void (**)(void))malloc(sizeof(void (*)(void))*n_buttons);

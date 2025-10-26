@@ -29,12 +29,13 @@ ToggleButton::ToggleButton(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, boo
 	penIsDown(false), on(false), has_bitmap(false)
 {
 	onToggle = 0;
-	caption = (char*)calloc(1, 1);
+	caption = NULL;
 }
 
 ToggleButton::~ToggleButton()
 {
-	if (caption) free(caption);
+	if (this->caption != NULL)
+		free(this->caption);
 }
 
 // Callback registration
@@ -75,9 +76,10 @@ void ToggleButton::buttonPress(u16 button)
 
 void ToggleButton::setCaption(const char *_caption)
 {
-	if (caption) free(caption);
-	caption = (char*)malloc(strlen(_caption)+1);
-	strcpy(caption, _caption);
+	if (this->caption != NULL)
+		free(this->caption);
+
+	this->caption = strdup(_caption);
 }
 
 void ToggleButton::setBitmap(const u8 *_bmp, int _width, int _height)
@@ -135,6 +137,7 @@ void ToggleButton::draw(void)
 		drawMonochromeIcon(2, 2, bmpwidth, bmpheight, bitmap, col);
 	}
 
-	drawString(caption, MAX(2, ((width-getStringWidth(caption))/2) ), height/2-5, 255, col);
+	if (caption != NULL)
+		drawString(caption, MAX(2, ((width-getStringWidth(caption))/2) ), height/2-5, 255, col);
 }
 
