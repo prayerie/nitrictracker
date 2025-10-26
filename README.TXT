@@ -38,7 +38,7 @@ What you can do:
 
         Bug reports and feature requests are collected here:
 
-        https://github.com/asiekierka/nitrotracker/issues
+        https://github.com/NitrousTracker/nitroustracker/issues
 
         If you have something that isn't already on that list, feel
         free to add it.
@@ -47,7 +47,7 @@ What you can do:
 
         The source and all the info on how to get started is here:
 
-        https://github.com/asiekierka/nitrotracker
+        https://github.com/NitrousTracker/nitroustracker
 
         If you want to contribute a pull request, go right ahead!
 
