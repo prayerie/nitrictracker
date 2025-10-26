@@ -14,15 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ======================================================================*/
 
-/*
- * 32x24 hit data
- */
-
-#define BSP	0x8 // Backspace
-#define CAP	0x2 // Caps
-#define RET	'\n' // Enter
-#define SHF	0x4 // Shift
-#define SPC	0x20 // Space
+#include "typewriter_hit.h"
 
 // 26x12 Tiles
 

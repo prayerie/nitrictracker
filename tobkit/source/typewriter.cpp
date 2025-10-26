@@ -20,25 +20,19 @@ limitations under the License.
 #include <string.h>
 
 #include "tobkit/typewriter.h"
-#include "tobkit/typewriter.hit.h"
-#include "tobkit/typewriter.map.h"
-#include "tobkit/typewriter.pal.h"
-#include "tobkit/typewriter.raw.h"
+#include "typewriter.h"
+#include "typewriter_hit.h"
 
 using namespace tobkit;
-
-#define BSP	0x8 // Backspace
-#define CAP	0x2 // Caps
-#define RET	'\n' // Enter
-#define SHF	0x4 // Shift
-#define NOK 0x0 // No key
 
 #define MAX_TEXT_LEN	256 // TODO: make dynamic
 
 #define TW_TILE_WIDTH 26
 #define TW_TILE_HEIGHT 12
-#define TW_WIDTH	((TW_TILE_WIDTH)*8+8)
-#define TW_HEIGHT	((TW_TILE_HEIGHT)*8+31)
+#define TW_TILE_X 4
+#define TW_TILE_Y 16
+#define TW_WIDTH	((TW_TILE_WIDTH)*8+(TW_TILE_X)*2)
+#define TW_HEIGHT	((TW_TILE_HEIGHT)*8+(TW_TILE_Y)*2-1)
 
 /* ===================== PUBLIC ===================== */
 
@@ -47,18 +41,20 @@ Typewriter::Typewriter(const char *_msg, u16 *_char_base,
 	vuint16* _trans_reg_y)
 	:Widget((SCREEN_WIDTH-TW_WIDTH)/2, (SCREEN_HEIGHT-TW_HEIGHT)/2-15, TW_WIDTH, TW_HEIGHT, _vram),
 	char_base(_char_base), map_base(_map_base), palette_offset(_palette_offset),
-	kx(x+4), ky(y+16),
+	kx(x+TW_TILE_X), ky(y+TW_TILE_Y),
 	mode(TYPEWRITER_MODE_NORMAL),
 	trans_reg_x(_trans_reg_x), trans_reg_y(_trans_reg_y), cursorpos(0), strlength(0)
 {
 	onOk = 0;
 	onCancel = 0;
 
-	dmaCopy((uint16*)typewriter_Palette, (uint16*)BG_PALETTE_SUB+palette_offset*16, 32);
-	dmaCopy((uint16*)typewriter_Palette_Hilight, (uint16 *)BG_PALETTE_SUB+palette_offset*16+16, 32);
-	
-	//dmaCopy((uint16*)keyboard_highlight_Palette, (uint16*)BG_PALETTE_SUB+16, 32);
-	dmaCopy((uint16*)typewriter_Tiles, char_base, 7776);
+	dmaCopy(typewriterPal, BG_PALETTE_SUB+palette_offset*16, 32);
+	// generate highlight palette
+	for (int i = 0; i < 16; i++) {
+		BG_PALETTE_SUB[palette_offset * 16 + 16 + i] = typewriterPal[i] ? 0xFFFF : 0x0000;
+	}
+
+	decompress(typewriterTiles, char_base, LZ77Vram);
 
 	u8 msglength = getStringWidth(_msg);
 	
@@ -286,7 +282,7 @@ void Typewriter::redraw(void)
 	u16 tile_attr = palette_offset << 12;
     for(u8 py=0; py<TW_TILE_HEIGHT; ++py) {
 		for(u8 px=0; px<TW_TILE_WIDTH; ++px) {
-		  map_base[32*py+px] = typewriter_Map[map_offset+26*py+px] | tile_attr;
+		  map_base[32*py+px] = typewriterMap[map_offset+26*py+px] | tile_attr;
         }
     }
 }

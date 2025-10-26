@@ -14,5 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ======================================================================*/
 
-extern const unsigned short typewriter_Palette[];
-extern const unsigned short typewriter_Palette_Hilight[];
+#define BSP	0x8 // Backspace
+#define CAP	0x2 // Caps
+#define RET	'\n' // Enter
+#define SHF	0x4 // Shift
+#define SPC	0x20 // Space
+#define NOK 0x0 // No key
+
+extern const unsigned char typewriter_Hit[];
+extern const unsigned char typewriter_Hit_Shift[];
