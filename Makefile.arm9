@@ -23,7 +23,7 @@ TOOLSDIR	:= tools
 # Defines passed to all files
 # ---------------------------
 
-DEFINES		:= -DPICOLIBC_INTEGER_PRINTF_SCANF
+DEFINES		:= -DPICOLIBC_INTEGER_PRINTF_SCANF -DTOBKIT_PLATFORM_NDS
 
 # Libraries
 # ---------

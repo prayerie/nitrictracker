@@ -1,5 +1,5 @@
 /*====================================================================
-Copyright 2006 Tobias Weyand
+Copyright 2025 Adrian "asie" Siekeirka
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,30 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ======================================================================*/
 
-#ifndef _TOBKIT_H_
-#define _TOBKIT_H_
+#ifndef _PLATFORM_NDS_H_
+#define _PLATFORM_NDS_H_
 
-#include "platform.h"
-#include "bitbutton.h"
-#include "button.h"
-#include "checkbox.h"
-#include "fileselector.h"
-#include "gradienticon.h"
-#include "groupbox.h"
-#include "gui.h"
-#include "piano.h"
-#include "label.h"
-#include "listbox.h"
-#include "memoryindicator.h"
-#include "messagebox.h"
-#include "numberbox.h"
-#include "numberslider.h"
-#include "pixmap.h"
-#include "radiobutton.h"
-#include "tabbox.h"
-#include "theme.h"
-#include "togglebutton.h"
-#include "typewriter.h"
-#include "widget.h"
+// TODO
 
 #endif
