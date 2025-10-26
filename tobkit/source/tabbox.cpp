@@ -177,9 +177,9 @@ void TabBox::draw(void)
 		
 		for(u8 guiidx=0;guiidx<guis.size();++guiidx) {
 			bool selected = guiidx==currentgui;
-			u8 offset = selected ? 3 : 0;
+			u8 offset = selected ? 0 : 3;
 
-			drawFullBox(3+size_full*guiidx, 1+offset, size_border, size_border-offset, selected ? theme->col_medium_bg : theme->col_light_bg);
+			drawFullBox(3+size_full*guiidx, 1+offset, size_border, size_border-offset, selected ? theme->col_light_bg : theme->col_medium_bg);
 			drawVLine(2+size_full*guiidx, 1+offset, size_border-offset, black);
 			drawHLine(3+size_full*guiidx, 0+offset, size_border, black);
 			drawVLine(2+size_full*(guiidx+1), 1+offset, size_border-offset, black);
