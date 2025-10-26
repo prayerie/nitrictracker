@@ -22,9 +22,11 @@ limitations under the License.
 #include "button.h"
 #include "gui.h"
 
-#define MODE_NORMAL	0
-#define MODE_SHIFT	1
-#define MODE_CAPS	2
+namespace tobkit {
+
+static constexpr u32 TYPEWRITER_MODE_NORMAL = 0;
+static constexpr u32 TYPEWRITER_MODE_SHIFT = 1;
+static constexpr u32 TYPEWRITER_MODE_CAPS = 2;
 
 class Typewriter: public Widget {
 	public:
@@ -81,6 +83,8 @@ class Typewriter: public Widget {
 		void redraw(void);
 		void drawCursor(void);
 		void setTile(int x, int y, int pal);
+};
+
 };
 
 #endif

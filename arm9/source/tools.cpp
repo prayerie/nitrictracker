@@ -47,7 +47,7 @@ void lowercase(char *str)
 
 void dbgWaitButton(void)
 {
-	iprintf("press the any key...\n");
+	printf("press the any key...\n");
 	scanKeys();
 	while(! (keysDown()&KEY_A) ) scanKeys();
 }
@@ -82,16 +82,16 @@ static int getFreeMem() {
 
 void PrintFreeMem(void)
 {
-	iprintf("FreeMem=%dbyte    \n", getFreeMem());
+	printf("FreeMem=%dbyte    \n", getFreeMem());
 }
 
 void printMallInfo(void)
 {
 	struct mallinfo mi = mallinfo();
-	iprintf("non-inuse chunks: %d\n", mi.fordblks);
-	iprintf("sbrk bytes:       %d\n", mi.arena);
-	iprintf("mmap bytes:       %d\n", mi.hblkhd);
-	iprintf("malloc chunks:    %d\n", mi.uordblks);
+	printf("non-inuse chunks: %d\n", mi.fordblks);
+	printf("sbrk bytes:       %d\n", mi.arena);
+	printf("mmap bytes:       %d\n", mi.hblkhd);
+	printf("malloc chunks:    %d\n", mi.uordblks);
 }
 
 #endif

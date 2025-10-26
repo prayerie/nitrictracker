@@ -25,6 +25,8 @@ Should be n+4 x n+4 pixels in size.
 
 #include "widget.h"
 
+namespace tobkit {
+
 class BitButton: public Widget {
 	public:
 		BitButton(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, const u8 *_bitmap,
@@ -49,6 +51,8 @@ class BitButton: public Widget {
 		
 		const u8 *bitmap;
 		u8 bmpwidth, bmpheight, bmpx, bmpy;
+};
+
 };
 
 #endif

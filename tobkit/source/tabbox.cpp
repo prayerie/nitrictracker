@@ -16,6 +16,8 @@ limitations under the License.
 
 #include "tobkit/tabbox.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 TabBox::TabBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram,

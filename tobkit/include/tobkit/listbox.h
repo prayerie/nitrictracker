@@ -22,6 +22,8 @@ limitations under the License.
 #include <string>
 #include "widget.h"
 
+namespace tobkit {
+
 #define ROW_HEIGHT				11
 #define COUNTER_WIDTH			17
 #define SCROLLBAR_WIDTH			9
@@ -75,6 +77,8 @@ class ListBox: public Widget {
 		u16 scrollthingypos, scrollthingyheight, pen_y_on_scrollthingy;
 		bool show_numbers, zero_offset; // zero_offset: If false, offset=1
 		std::vector<std::string> elements;
+};
+
 };
 
 #endif

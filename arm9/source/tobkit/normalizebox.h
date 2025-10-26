@@ -31,6 +31,8 @@
 #include "tobkit/numberslider.h"
 #include "tobkit/gui.h"
 
+namespace tobkit {
+
 #define NORMALIZEBOX_WIDTH		150
 #define NORMALIZEBOX_HEIGHT		60
 
@@ -66,6 +68,8 @@ class NormalizeBox: public Widget {
 		Button *buttonok, *buttoncancel;
 		NumberSlider *nspercent;
 	
+};
+
 };
 
 #endif

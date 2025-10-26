@@ -19,6 +19,8 @@ limitations under the License.
 
 #include <nds.h>
 
+namespace tobkit {
+
 class Theme
 {
 	public:
@@ -40,6 +42,8 @@ class Theme
 		u16 col_icon;
 		u16 col_text;
 		u16 col_signal;
+};
+
 };
 
 #endif

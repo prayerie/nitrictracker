@@ -21,6 +21,8 @@ limitations under the License.
 #include "tobkit/checkbox.h"
 #include "haken_raw.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 CheckBox::CheckBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible, bool checked,

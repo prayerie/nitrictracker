@@ -24,6 +24,8 @@ limitations under the License.
 #include <map>
 #include <string>
 
+namespace tobkit {
+
 typedef std::map<std::string, std::vector<std::string> > FilterSet;
 
 class File {
@@ -94,6 +96,8 @@ class FileSelector: public ListBox {
 		// Hack! ListBox::penDown calls draw(), which we capture and perform later.
 		bool ignore_draws;
 		bool parent_requested_draw;
+};
+
 };
 
 #endif

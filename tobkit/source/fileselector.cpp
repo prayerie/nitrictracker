@@ -30,6 +30,8 @@ limitations under the License.
 
 #include "tobkit/fileselector.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 FileSelector::FileSelector(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool visible)
@@ -76,9 +78,9 @@ void FileSelector::penDown(u8 px, u8 py)
 	if(touched_entry) {
 		// If it is a dir, enter it
 		if((filelist.at(activeelement).is_dir == true)&&(filelist.at(activeelement).name != "..")) {
-			//iprintf("element %u\n",activeelement);
+			//printf("element %u\n",activeelement);
 			current_directory += filelist.at(activeelement).name + "/";
-			//iprintf("newdir: %s\n",current_directory.c_str());
+			//printf("newdir: %s\n",current_directory.c_str());
 			activeelement = 0;
 
 			if(onDirChange != NULL) {
@@ -94,7 +96,7 @@ void FileSelector::penDown(u8 px, u8 py)
 			if(slashpos != std::string::npos) {
 				name.erase(slashpos, name.length()-slashpos-1);
 				current_directory = name;
-				//iprintf("%s\n",current_directory.c_str());
+				//printf("%s\n",current_directory.c_str());
 				activeelement = 0;
 
 				if(onDirChange != NULL) {
@@ -213,7 +215,7 @@ void FileSelector::read_directory(void)
 	filelist.clear();
 
 	if( chdir(current_directory.c_str()) == -1 ) {
-		iprintf("cwd to %s failed\n", current_directory.c_str());
+		printf("cwd to %s failed\n", current_directory.c_str());
 		return;
 	}
 
@@ -222,7 +224,7 @@ void FileSelector::read_directory(void)
 
 	if((dir = opendir(current_directory.c_str())) == NULL)
 	{
-		iprintf("Dir read error!\n");
+		printf("Dir read error!\n");
 		return;
 	}
 

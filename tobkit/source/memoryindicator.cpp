@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "tobkit/memoryindicator.h"
 
+using namespace tobkit;
+
 #define clamp(v, vmin, vmax) (((v) < (vmin)) ? (vmin) : ((v > (vmax)) ? (vmax) : (v)))
 
 /* https://devkitpro.org/viewtopic.php?f=6&t=3057 */

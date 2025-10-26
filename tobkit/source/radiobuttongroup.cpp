@@ -16,6 +16,8 @@ limitations under the License.
 
 #include "tobkit/radiobutton.h"
 
+using namespace tobkit;
+
 RadioButton::RadioButtonGroup::RadioButtonGroup()
 {
 	onChange = 0;

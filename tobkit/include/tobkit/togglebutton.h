@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "widget.h"
 
+namespace tobkit {
+
 /* A button that can be toggled on and off, like a switch. It can have a caption and an icon. */
 class ToggleButton: public Widget {
 	public:
@@ -58,6 +60,8 @@ class ToggleButton: public Widget {
 		bool on;
 		bool has_bitmap;
 		u8 bmpwidth, bmpheight;
+};
+
 };
 
 #endif

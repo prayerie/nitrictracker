@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "widget.h"
 
+namespace tobkit {
+
 class GroupBox: public Widget
 {
 	public:
@@ -33,6 +35,8 @@ class GroupBox: public Widget
 		char *text;
 		
 		void draw(void);
+};
+
 };
 
 #endif

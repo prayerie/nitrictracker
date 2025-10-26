@@ -18,6 +18,8 @@ limitations under the License.
 
 #include "tobkit/gradienticon.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 GradientIcon::GradientIcon(u8 _x, u8 _y, u8 _width, u8 _height, u16 _colorTop, u16 _colorBottom, const u32* _image, u16 **_vram, bool _visible)

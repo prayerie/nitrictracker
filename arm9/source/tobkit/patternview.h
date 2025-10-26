@@ -31,6 +31,8 @@
 #include "../state.h"
 #include "font_3x5_raw.h"
 
+namespace tobkit {
+
 #define PV_BORDER_WIDTH	10
 #define PV_CURSORBAR_Y	88
 #define PV_CELL_HEIGHT	8
@@ -313,6 +315,8 @@ class PatternView: public Widget {
 		
 		bool solo_channels[32];
 		bool mute_channels[32];
+};
+
 };
 
 #endif

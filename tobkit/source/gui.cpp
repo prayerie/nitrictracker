@@ -18,6 +18,8 @@ limitations under the License.
 
 #include <stdio.h>
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 GUI::GUI()

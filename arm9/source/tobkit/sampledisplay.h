@@ -28,6 +28,8 @@
 #include "tobkit/widget.h"
 #include "ntxm/sample.h"
 
+namespace tobkit {
+
 #define LOOP_TRIANGLE_SIZE				8
 #define SNAP_TO_ZERO_CROSSING_RADIUS	32 // Search 32 samples to the left and to the right to find a zero crossing
 
@@ -116,6 +118,8 @@ class SampleDisplay: public Widget {
 		bool draw_mode;
 
 		u8 draw_last_x, draw_last_y;
+};
+
 };
 
 #endif

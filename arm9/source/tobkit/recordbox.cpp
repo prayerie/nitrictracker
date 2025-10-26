@@ -33,6 +33,8 @@
 #include "ntxm/instrument.h"
 #include "ntxm/fifocommand.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 // Constructor sets base variables

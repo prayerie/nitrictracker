@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "widget.h"
 
+namespace tobkit {
+
 /**
  * @brief 2bpp gradient icon pixmap.
  */
@@ -43,6 +45,8 @@ class GradientIcon: public Widget {
 		void (*onPush)(void);
 		const u32 *image;
 		const u16 colorTop, colorBottom;
+};
+
 };
 
 #endif

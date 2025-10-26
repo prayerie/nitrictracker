@@ -22,6 +22,8 @@ limitations under the License.
 
 #include "tobkit/label.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 Label::Label(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _has_border, bool _albino, bool _no_bg, bool _right_aligned)

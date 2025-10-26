@@ -25,6 +25,8 @@ limitations under the License.
 #include "tobkit/typewriter.pal.h"
 #include "tobkit/typewriter.raw.h"
 
+using namespace tobkit;
+
 #define BSP	0x8 // Backspace
 #define CAP	0x2 // Caps
 #define RET	'\n' // Enter
@@ -44,7 +46,7 @@ Typewriter::Typewriter(const char *_msg, u16 *_char_base,
 	:Widget((SCREEN_WIDTH-TW_WIDTH)/2, (SCREEN_HEIGHT-TW_HEIGHT)/2-15, TW_WIDTH, TW_HEIGHT, _vram),
 	char_base(_char_base), map_base(_map_base),
 	kx(x+4), ky(y+16),
-	mode(MODE_NORMAL),
+	mode(TYPEWRITER_MODE_NORMAL),
 	trans_reg_x(_trans_reg_x), trans_reg_y(_trans_reg_y), cursorpos(0), strlength(0)
 {
 	//char_base = (u16*)CHAR_BASE_BLOCK_SUB(1);
@@ -120,26 +122,26 @@ void Typewriter::penDown(u8 px, u8 py)
 		if(tilex>=1 && tilex<=24 && tiley<=12)
 		{
 			char c;
-			if((mode==MODE_CAPS)||(mode==MODE_SHIFT))
+			if((mode==TYPEWRITER_MODE_CAPS)||(mode==TYPEWRITER_MODE_SHIFT))
 				c = typewriter_Hit_Shift[tilex+(tiley*26)];
 			else
 				c = typewriter_Hit[tilex+(tiley*26)];
 			
 			if(c==CAP)
 			{
-				if((mode==MODE_CAPS)||(mode==MODE_SHIFT)) {
-					mode = MODE_NORMAL;
+				if((mode==TYPEWRITER_MODE_CAPS)||(mode==TYPEWRITER_MODE_SHIFT)) {
+					mode = TYPEWRITER_MODE_NORMAL;
 				} else {
-					mode = MODE_CAPS;
+					mode = TYPEWRITER_MODE_CAPS;
 				}
 				redraw();
 			}
 			else if (c==SHF)
 			{
-				if((mode==MODE_CAPS)||(mode==MODE_SHIFT)) {
-					mode = MODE_NORMAL;
+				if((mode==TYPEWRITER_MODE_CAPS)||(mode==TYPEWRITER_MODE_SHIFT)) {
+					mode = TYPEWRITER_MODE_NORMAL;
 				} else {
-					mode = MODE_SHIFT;
+					mode = TYPEWRITER_MODE_SHIFT;
 				}
 				redraw();
 			}
@@ -164,8 +166,8 @@ void Typewriter::penDown(u8 px, u8 py)
 			}
 			else if(c!=NOK)
 			{
-				if(mode==MODE_SHIFT) {
-					mode = MODE_NORMAL;
+				if(mode==TYPEWRITER_MODE_SHIFT) {
+					mode = TYPEWRITER_MODE_NORMAL;
 					redraw();
 				}
 				if(strlength<MAX_TEXT_LEN)
@@ -280,7 +282,7 @@ void Typewriter::redraw(void)
 	drawCursor();
 	
 	u16 map_offset;
-	if((mode == MODE_CAPS)||(mode == MODE_SHIFT)) {
+	if((mode == TYPEWRITER_MODE_CAPS)||(mode == TYPEWRITER_MODE_SHIFT)) {
 		map_offset = 312;
 	} else {
 		map_offset = 0;

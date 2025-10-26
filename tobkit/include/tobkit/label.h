@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "widget.h"
 
+namespace tobkit {
+
 class Label: public Widget {
 	public:
 		Label(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _has_border=true,
@@ -47,6 +49,8 @@ class Label: public Widget {
 		bool is_albino;
 		bool no_bg;
 		bool right_aligned;
+};
+
 };
 
 #endif

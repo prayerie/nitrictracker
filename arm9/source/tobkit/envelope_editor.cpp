@@ -31,6 +31,8 @@
 #include "ntxm/ntxmtools.h"
 #include "../tools.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 // Constructor sets base variables

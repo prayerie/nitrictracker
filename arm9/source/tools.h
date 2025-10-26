@@ -33,16 +33,9 @@
 // A collection of utilities for everyday DS coding
 
 #ifdef DEBUG
-#define debugprintf iprintf
+#define debugprintf printf
 #else
 static inline void debugprintf(...) {}
-#endif
-
-#ifdef __BLOCKSDS__
-#define iprintf printf
-#define fiprintf fprintf
-#define siprintf sprintf
-#define sniprintf snprintf
 #endif
 
 #define ceil_f32toint(n) (((n) + ((1 << 12) - 1)) >> 12)

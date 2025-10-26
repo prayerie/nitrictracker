@@ -25,6 +25,8 @@ Only Push event
 
 #include "widget.h"
 
+namespace tobkit {
+
 class Button: public Widget {
 	public:
 		Button(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible=true);
@@ -52,6 +54,8 @@ class Button: public Widget {
 		
 		void draw(u8 down);
 		char *caption;
+};
+
 };
 
 #endif

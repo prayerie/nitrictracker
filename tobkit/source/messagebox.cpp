@@ -22,6 +22,8 @@ limitations under the License.
 #include <cstring>
 #include <cstdlib>
 
+using namespace tobkit;
+
 #define MB_MIN_WIDTH	150
 #define MB_HEIGHT	46
 

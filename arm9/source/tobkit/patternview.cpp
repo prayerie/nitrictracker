@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+using namespace tobkit;
 
 /* ===================== PUBLIC ===================== */
 
@@ -368,7 +369,7 @@ void PatternView::draw(void)
 	for(u16 i=0;i<getNumVisibleChannels();++i)
 	{
 		drawFullBox(PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 14, 11, col_bg);
-		sniprintf(numberstr, sizeof(numberstr), "%-2x", (u8) (hscrollpos+i));
+		snprintf(numberstr, sizeof(numberstr), "%-2x", (u8) (hscrollpos+i));
 		drawString(numberstr, PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 255, col_lines);
 	}
 	

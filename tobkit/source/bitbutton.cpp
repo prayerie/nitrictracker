@@ -22,6 +22,8 @@ limitations under the License.
 
 #include "tobkit/bitbutton.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 BitButton::BitButton(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, const u8 *_bitmap, u8 _bmpwidth,

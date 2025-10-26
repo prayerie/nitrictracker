@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "widget.h"
 
+namespace tobkit {
+
 class CheckBox: public Widget
 {
 	public:
@@ -45,6 +47,8 @@ class CheckBox: public Widget
 		void (*onToggle)(bool);
 		
 		void draw(void);
+};
+
 };
 
 #endif

@@ -22,8 +22,10 @@ limitations under the License.
 
 #include <vector>
 
-#define TABBOX_ORIENTATION_TOP 0
-#define TABBOX_ORIENTATION_LEFT 1
+namespace tobkit {
+
+static constexpr u32 TABBOX_ORIENTATION_TOP = 0;
+static constexpr u32 TABBOX_ORIENTATION_LEFT = 1;
 
 class TabBox: public Widget {
 	public:
@@ -67,6 +69,8 @@ class TabBox: public Widget {
 		std::vector<GUI> guis;
 	
 		void (*onTabChange)(u8 tab);
+};
+
 };
 
 #endif

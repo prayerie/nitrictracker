@@ -38,7 +38,7 @@ Settings::Settings(char *launch_path, bool use_fat)
 : handedness(RIGHT_HANDED),
 sample_preview(true),
 stereo_output(true),
-theme(new Theme()),
+theme(new tobkit::Theme()),
 fat(use_fat), changed(false)
 {
 	songpath[SETTINGS_FILENAME_LEN] = '\0';
@@ -48,8 +48,8 @@ fat(use_fat), changed(false)
 	configpath[0] = '\0';
 	configpath[SETTINGS_FILENAME_LEN] = '\0';
 
-	sniprintf(songpath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
-	sniprintf(samplepath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
+	snprintf(songpath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
+	snprintf(samplepath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
 
 	if(fat == true)
 	{
@@ -59,7 +59,7 @@ fat(use_fat), changed(false)
 			dirCreate("/data/NitroTracker");
 		}
 
-		sniprintf(configpath, SETTINGS_FILENAME_LEN, "%s/%s",
+		snprintf(configpath, SETTINGS_FILENAME_LEN, "%s/%s",
 			launch_path != NULL ? launch_path : SETTINGS_DEFAULT_DATA_DIR,
 			SETTINGS_CONFIG_FILENAME);
 
@@ -161,12 +161,12 @@ void Settings::setLinesPerBeat(u8 lines_per_beat_)
 	changed = true;
 }
 
-Theme *Settings::getTheme(void)
+tobkit::Theme *Settings::getTheme(void)
 {
 	return theme;
 }
 
-void Settings::setTheme(Theme *theme_)
+void Settings::setTheme(tobkit::Theme *theme_)
 {
 	theme = theme_;
 	changed = true;
@@ -229,7 +229,7 @@ bool Settings::write(void)
 	boolToString(sample_preview, prevstring);
 	boolToString(stereo_output, stereostring);
 	boolToString(freq_47khz, freqstring);
-	fiprintf(conf, "Samplepath = %s\nSongpath = %s\nHandedness = %s\nSample Preview = %s\nStereo Output = %s\n47kHz Output = %s\nLines Per Beat = %d\n",
+	fprintf(conf, "Samplepath = %s\nSongpath = %s\nHandedness = %s\nSample Preview = %s\nStereo Output = %s\n47kHz Output = %s\nLines Per Beat = %d\n",
 			samplepath, songpath, hstring, prevstring, stereostring, freqstring, lines_per_beat);
 	fclose(conf);
 	return true;

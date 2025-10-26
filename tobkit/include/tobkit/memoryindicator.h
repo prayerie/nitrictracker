@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "widget.h"
 
+namespace tobkit {
+
 class MemoryIndicator : public Widget
 {
 	public:
@@ -32,6 +34,8 @@ class MemoryIndicator : public Widget
 		void draw(void);
 		
 		u32 total_ram;
+};
+
 };
 
 #endif /*MEMORYINDICATOR_H_*/

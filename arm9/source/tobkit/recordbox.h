@@ -31,6 +31,8 @@
 
 #include "ntxm/song.h"
 
+namespace tobkit {
+
 #define RECORDBOX_WIDTH			150
 #define RECORDBOX_HEIGHT		64
 #define RECORDBOX_SOUNDDATA_SIZE	(256*1024) // 8 seconds at 16384 Hz, 16 Bit
@@ -74,6 +76,8 @@ class RecordBox: public Widget {
 		Instrument *instrument;
 		u8 smpidx;
 		u16 *sound_data;
+};
+
 };
 
 #endif

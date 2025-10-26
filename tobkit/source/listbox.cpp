@@ -19,6 +19,8 @@ limitations under the License.
 #include <stdlib.h>
 #include <stdio.h>
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 ListBox::ListBox(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, u16 n_items,
@@ -362,7 +364,7 @@ void ListBox::draw(void)
 			offset=1;
 		}
 		for(i=0;(i<height/ROW_HEIGHT)&&(scrollpos+i<elements.size());++i) {
-			sniprintf(numberstr, sizeof(numberstr), "%2x", (u16) (scrollpos+i+offset));
+			snprintf(numberstr, sizeof(numberstr), "%2x", (u16) (scrollpos+i+offset));
 			drawString(numberstr, 2, ROW_HEIGHT*i+2);
 		}
 		

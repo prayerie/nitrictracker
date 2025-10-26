@@ -24,10 +24,12 @@ limitations under the License.
 #include "tobkit/piano.map.h"
 #include "tobkit/piano_hit.h"
 
+using namespace tobkit;
+
 #define clamp(v, vmin, vmax) (((v) < (vmin)) ? (vmin) : ((v > (vmax)) ? (vmax) : (v)))
 
-u8 halftones[] = {1, 3, 6, 8, 10, 13, 15, 18, 20, 22};
-u8 x_offsets[] = {0, 11, 16, 27, 32, 48, 59, 64, 75, 80, 91, 96};
+static u8 halftones[] = {1, 3, 6, 8, 10, 13, 15, 18, 20, 22};
+static u8 x_offsets[] = {0, 11, 16, 27, 32, 48, 59, 64, 75, 80, 91, 96};
 
 /* ===================== PUBLIC ===================== */
 Piano::Piano(u8 _x, u8 _y, u8 _width, u8 _height, u16 *_char_base, u16 *_map_base, u16 **_vram)

@@ -31,8 +31,10 @@ Calls touched widget
 #include "widget.h"
 #include "theme.h"
 
-#define MAIN_SCREEN	0
-#define SUB_SCREEN	1
+namespace tobkit {
+
+static constexpr u32 MAIN_SCREEN = 0;
+static constexpr u32 SUB_SCREEN = 1;
 
 class GUI {
 	public:
@@ -95,6 +97,8 @@ class GUI {
 		// Find the widget that got hit
 		Widget *getWidgetAt(u8 x, u8 y);
 		Widget *getWidgetForButtons(u16 buttons);
+};
+
 };
 
 #endif

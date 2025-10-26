@@ -21,6 +21,8 @@ limitations under the License.
 #include <stdio.h>
 #include <vector>
 
+namespace tobkit {
+
 class RadioButton: public Widget {
 	public:
 		class RadioButtonGroup {
@@ -56,6 +58,8 @@ class RadioButton: public Widget {
 		RadioButtonGroup *rbg;
 		bool active;
 		const char *label;
+};
+
 };
 
 #endif

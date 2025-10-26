@@ -18,6 +18,9 @@ limitations under the License.
 #include <stdio.h>
 
 #include "tobkit/widget.h"
+
+using namespace tobkit;
+
 #include "font_8x11.inc"
 
 #define	abs(x)	(x<0?(-x):(x))

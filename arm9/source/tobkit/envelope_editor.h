@@ -28,6 +28,8 @@
 #include "tobkit/widget.h"
 #include "ntxm/instrument.h"
 
+namespace tobkit {
+
 #define MAX_POINTS			12
 
 #define POINT_WIDTH			7
@@ -126,6 +128,8 @@ class EnvelopeEditor: public Widget
 		u32 scrollpos;
 
 		bool draw_mode;
+};
+
 };
 
 #endif

@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "tobkit/groupbox.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 GroupBox::GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visible)

@@ -49,6 +49,8 @@
 #include "tobkit/patternview.h"
 #include "tobkit/normalizebox.h"
 
+using namespace tobkit;
+
 #include <ntxm/fifocommand.h>
 #include <ntxm/song.h>
 #include <ntxm/xm_transport.h>
@@ -546,17 +548,17 @@ void sampleChange(Sample *smp)
 	else
 		rbg_sampleloop->setActive(0);
 	/*
-	iprintf("Selected:");
+	printf("Selected:");
 	if(smp->is16bit()) {
-		iprintf("16bit ");
+		printf("16bit ");
 	} else {
-		iprintf("8bit ");
+		printf("8bit ");
 	}
 	if(smp->getLoop() != 0) {
-		iprintf("looping ");
+		printf("looping ");
 	}
-	iprintf("Sample.\n");
-	iprintf("length: %u\n", smp->getNSamples());
+	printf("Sample.\n");
+	printf("length: %u\n", smp->getNSamples());
 	*/
 }
 
@@ -620,14 +622,14 @@ void handleInstChange(u16 newinst)
 void updateLabelSongLen(void)
 {
 	/* char labelstr[12];
-	sniprintf(labelstr, 12, "songlen:%2d", song->getPotLength());
+	snprintf(labelstr, 12, "songlen:%2d", song->getPotLength());
 	labelsonglen->setCaption(labelstr); */
 }
 
 void updateLabelChannels(void)
 {
 	char labelstr[9];
-	sniprintf(labelstr, 9, "chn: %2d", song->getChannels());
+	snprintf(labelstr, 9, "chn: %2d", song->getChannels());
 	labelchannels->setCaption(labelstr);
 }
 
@@ -659,7 +661,7 @@ void setSong(Song *newsong)
 	u8 potentry;
 	for(u8 i=0;i<song->getPotLength();++i) {
 		potentry = song->getPotEntry(i);
-		sniprintf(str, 255, "%2x", potentry);
+		snprintf(str, 255, "%2x", potentry);
 		lbpot->add(str);
 	}
 
@@ -1371,7 +1373,7 @@ void handlePotDec(void) {
 		nsptnlen->setValue(song->getPatternLength(song->getPotEntry(state->potpos)));
 	}
 	char str[3];
-	sniprintf(str, sizeof(str), "%2x", pattern);
+	snprintf(str, sizeof(str), "%2x", pattern);
 	lbpot->set(state->potpos, str);
 }
 
@@ -1398,7 +1400,7 @@ void handlePotInc(void)
 		nsptnlen->setValue(song->getPatternLength(song->getPotEntry(state->potpos)));
 	}
 	char str[3];
-	sniprintf(str, sizeof(str), "%2x", pattern);
+	snprintf(str, sizeof(str), "%2x", pattern);
 	lbpot->set(state->potpos, str);
 }
 
@@ -1463,7 +1465,7 @@ void handlePtnClone(void)
 	action_buffer->clear();
 	DC_FlushAll();
 	char numberstr[3] = {0};
-	siprintf(numberstr, "%2x", newidx);
+	sprintf(numberstr, "%2x", newidx);
 	lbpot->ins(lbpot->getidx()+1, numberstr);
 
 	updateLabelSongLen();
@@ -2293,7 +2295,7 @@ void showMessage(const char *msg, bool error)
 void showAboutBox(void)
 {
 	char msg[256];
-	sniprintf(msg, 256, "NitrousTracker " VERSION " (" GIT_HASH ")");
+	snprintf(msg, 256, "NitrousTracker " VERSION " (" GIT_HASH ")");
 	mb = new MessageBox(&sub_vram, msg, 2, "track on!", deleteMessageBox, "exit", showExitBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
@@ -3709,7 +3711,7 @@ void VblankHandler(void)
 
 extern "C" void debug_print_stub(char *string)
 {
-	iprintf(string);
+	printf(string);
 }
 
 void fadeIn(void)
@@ -3748,7 +3750,7 @@ void saveScreenshot(void)
 
 	static u8 filenr = 0;
 	char filename[255] = {0};
-	siprintf(filename, "scr%02d.rgb", filenr);
+	sprintf(filename, "scr%02d.rgb", filenr);
 
 	FILE *fileh;
 	fileh = fopen(filename, "w");
@@ -3765,7 +3767,7 @@ void dumpSample(void)
 {
 	static u8 smpfilenr = 0;
 	char filename[255] = {0};
-	siprintf(filename, "smp%02d.raw", smpfilenr);
+	sprintf(filename, "smp%02d.raw", smpfilenr);
 
 	Instrument *inst = song->getInstrument(state->instrument);
 	if(inst==0) return;

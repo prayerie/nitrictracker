@@ -16,6 +16,8 @@ limitations under the License.
 
 #include "tobkit/theme.h"
 
+using namespace tobkit;
+
 Theme::Theme(void)
 {
 	// Set default colors

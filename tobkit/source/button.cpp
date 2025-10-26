@@ -20,6 +20,8 @@ limitations under the License.
 
 #include "tobkit/button.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 Button::Button(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _visible)

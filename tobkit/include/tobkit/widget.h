@@ -27,12 +27,7 @@ Has rectangular area
 
 #include "theme.h"
 
-#ifdef __BLOCKSDS__
-#define iprintf printf
-#define fiprintf fprintf
-#define siprintf sprintf
-#define sniprintf snprintf
-#endif
+namespace tobkit {
 
 struct Font {
 	u8 width, height;
@@ -151,6 +146,8 @@ class Widget {
 
 		// Overdraw the object with its background color
 		void overdraw(void);
+};
+
 };
 
 #endif

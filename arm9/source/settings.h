@@ -55,8 +55,8 @@ class Settings {
 		u8 getLinesPerBeat(void);
 		void setLinesPerBeat(u8 lines_per_beat_);
 
-		Theme *getTheme(void);
-		void setTheme(Theme *theme_);
+		tobkit::Theme *getTheme(void);
+		void setTheme(tobkit::Theme *theme_);
 
 		char *getSongPath(void);
 		void setSongPath(const char* songpath_);
@@ -82,7 +82,7 @@ class Settings {
 		bool stereo_output;
 		bool freq_47khz;
 		u8 lines_per_beat;
-		Theme *theme;
+		tobkit::Theme *theme;
 		char configpath[SETTINGS_FILENAME_LEN + 1];
 		char songpath[SETTINGS_FILENAME_LEN + 1];
 		char samplepath[SETTINGS_FILENAME_LEN + 1];

@@ -19,6 +19,8 @@ limitations under the License.
 
 #include "tobkit/numberbox.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 NumberBox::NumberBox(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, u8 _value, u8 _min, u8 _max, u8 _digits)
@@ -128,7 +130,7 @@ void NumberBox::draw(void)
 	// Set no of digits (hacky, but there's no other way)
 	formatstr[1] = digits+48;
 	
-	sniprintf(numberstr, sizeof(numberstr), formatstr, value);
+	snprintf(numberstr, sizeof(numberstr), formatstr, value);
 	drawString(numberstr, 10, 5);
 	
 	// Border

@@ -20,8 +20,10 @@ limitations under the License.
 #include <nds.h>
 #include "widget.h"
 
-#define PIANO_WIDTH_TILES 28
-#define PIANO_HEIGHT_TILES 5
+namespace tobkit {
+
+static constexpr u32 PIANO_WIDTH_TILES = 28;
+static constexpr u32 PIANO_HEIGHT_TILES = 5;
 
 class Piano: public Widget {
 	public:
@@ -60,6 +62,8 @@ class Piano: public Widget {
 		char key_labels[24];
 		bool key_labels_visible;
 		u16 curr_note;
+};
+
 };
 
 #endif

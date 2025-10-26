@@ -20,6 +20,8 @@ limitations under the License.
 #include "tobkit/numberslider.h"
 #include "tobkit/numberbox.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 NumberSlider::NumberSlider(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, s32 _value, s32 _min, s32 _max, bool _hex, bool _is_8bit)
@@ -180,9 +182,9 @@ void NumberSlider::draw(void)
 	char numberstr[5];
 	if (is_8bit)
 	{
-		sniprintf(numberstr, sizeof(numberstr), hex ? "%2hhx" : "%3hhd", (int)value);
+		snprintf(numberstr, sizeof(numberstr), hex ? "%2hhx" : "%3hhd", (int)value);
 	} else {
-		sniprintf(numberstr, sizeof(numberstr), hex ? "%2lx" : "%3ld", value);
+		snprintf(numberstr, sizeof(numberstr), hex ? "%2lx" : "%3ld", value);
 	}
 	drawString(numberstr, 10, 5);
 	

@@ -29,6 +29,8 @@
 
 #include "tobkit/numberbox.h"
 
+using namespace tobkit;
+
 /* ===================== PUBLIC ===================== */
 
 NumberSliderRelNote::NumberSliderRelNote(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, s32 _value)
@@ -160,7 +162,7 @@ void NumberSliderRelNote::draw(void)
 	}
 	
 	char notestr[4];
-	sniprintf(notestr, sizeof(notestr), "%s%u", nstr, octave);
+	snprintf(notestr, sizeof(notestr), "%s%u", nstr, octave);
 	drawString(notestr, 10, 5);
 	
 	// Border
