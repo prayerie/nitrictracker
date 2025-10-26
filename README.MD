@@ -1,11 +1,11 @@
 "NitricTracker"
 -
 
-This is my fork of NitrousTracker which I use to haphazardly add features that I would like, which I will then pull request when they are cleaned up and done.
+This is my fork of NitrousTracker which I use as a test bed for random features before attempting to cleaning them up and merge requesting upstream. [Click here to download the latest artifact (nds builds)](https://nightly.link/prayerie/nitrictracker/workflows/build.yaml/new/NitricTracker.zip). Note that bothing in here is final, the implementation is extremely unstable, and any change that does make it through will be fully rewritten. **You will experience frequent crashes and lose work** - this build serves as more of a proof of concept (if youhave feedback regarding any proposed changes, please join the unofficial NitroTracker discord and ping me, or make an issue here). Also, this repository will lag behind upstream a lot.  
 
-Also please note: all the currently unfinished features here will be rewritten. The current implementation is extremely messy and buggy and just me testing how feasible different features are. Also, the current design of the FX keypad is not final.
+If you do experience a crash (or "RSOD"), a photo of the red screen, alongside what you were doing, would be of great help. 
 
-[Click here to download the latest artifact (nds builds)](https://nightly.link/prayerie/nitrictracker/workflows/build.yaml/new/NitricTracker.zip). Note that I just commit random stuff that may be broken here with no regard for stability, so it will probably suck to use (don't blame me if you get a random guru meditation error and lose any current work). This repo will not have any formal numbered releases, as when the changes here are stable I will just merge request NitrousTracker.
+This repo will not have any formal numbered releases, as when the changes here are stable I will just merge request NitrousTracker.
 
 now with a working playback cursor!
 
@@ -17,9 +17,8 @@ more screenshots:
 
 ### Status
 
-- [x] fx keypad
-- [x] cell selection transpose buttons
-- [x] themeing support (mostly done)
+- [ ] rework fx keypad (exolotl design)
+- [x] themeing support (mostly done, add Theme.conf(?))
 - [ ] sample duplication
 - [ ] somehow include sample edits in undo buffer (maybe?)
 - [ ] inst swap
@@ -29,8 +28,6 @@ more screenshots:
 - [ ] interpolate fx between start and end fx
 - [ ] support for reading openmpt .xm format additions
 
-
-dflkjghdlfkghj
 
 
 original readme:
