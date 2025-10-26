@@ -3928,7 +3928,7 @@ int main(int argc, char **argv) {
 	CommandSetSong(song);
 
 	setupGUI(fat_success);
-	action_buffer->register_change_callback(actionBufferChangeCallback);
+	action_buffer->register_change_callback({&actionBufferChangeCallback});
 
 	applySettings();
 	setSong(song);
