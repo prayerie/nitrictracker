@@ -3,7 +3,7 @@
 
 This is my fork of NitrousTracker which I use as a test bed for random features before attempting to clean them up and merge requesting upstream.
 
-[Click here to download the latest artifact (nds builds)](https://nightly.link/prayerie/nitrictracker/workflows/build.yaml/new/NitricTracker.zip). Note that bothing in here is final, the implementation is extremely unstable, and any change that does make it through will be fully rewritten.
+[Click here to download the latest artifact (nds builds)](https://nightly.link/prayerie/nitrictracker/workflows/build.yaml/new/NitricTracker.zip). Note that nothing in here is final, the implementation is extremely unstable, and any change that does make it through will be fully rewritten.
 
 **You will experience frequent crashes and lose work** - this build serves as more of a proof of concept (if you have feedback regarding any proposed changes, please join the unofficial NitroTracker discord and ping me, or make an issue here). Also, this repository will lag behind upstream a lot.  
 
