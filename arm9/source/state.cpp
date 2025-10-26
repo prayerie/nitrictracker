@@ -27,7 +27,15 @@
 #include <stdlib.h>
 
 State::State(void) {
+	song_filename = (char*) malloc(STATE_FILENAME_LEN + 1);
+	sample_filename = (char*) malloc(STATE_FILENAME_LEN + 1);
+
 	reset();
+}
+
+State::~State(void) {
+	free(song_filename);
+	free(sample_filename);
 }
 
 void State::reset(void)
@@ -36,8 +44,8 @@ void State::reset(void)
 	dsmi_send = true;
 	dsmi_recv = true;
 	preview_sample = 0;
-	song_filename = (char*)calloc(1, STATE_FILENAME_LEN + 1);
-	sample_filename = (char*)calloc(1, STATE_FILENAME_LEN + 1);
+	song_filename[0] = 0;
+	sample_filename[0] = 0;
 
 	resetSong();
 }
