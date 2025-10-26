@@ -1,3 +1,16 @@
+-- NitrousTracker DEV
+
+Improvements:
+
+- minor RAM usage improvements
+
+Fixes:
+
+- fixed not loading instrument values properly in edge cases (Arikari405)
+- fixed regression in tab box rendering
+- fixed text being overzealously trimmed
+- other minor fixes
+
 -- NitrousTracker v0.4.16 (2025-07-12)
 
 Improvements:
