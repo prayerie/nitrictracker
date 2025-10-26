@@ -35,8 +35,10 @@ using namespace tobkit;
 
 #define MAX_TEXT_LEN	256 // TODO: make dynamic
 
-#define TW_WIDTH	216
-#define TW_HEIGHT	127
+#define TW_TILE_WIDTH 26
+#define TW_TILE_HEIGHT 12
+#define TW_WIDTH	((TW_TILE_WIDTH)*8+8)
+#define TW_HEIGHT	((TW_TILE_HEIGHT)*8+31)
 
 /* ===================== PUBLIC ===================== */
 
@@ -44,16 +46,11 @@ Typewriter::Typewriter(const char *_msg, u16 *_char_base,
 	u16 *_map_base, u8 _palette_offset, uint16 **_vram, vuint16* _trans_reg_x,
 	vuint16* _trans_reg_y)
 	:Widget((SCREEN_WIDTH-TW_WIDTH)/2, (SCREEN_HEIGHT-TW_HEIGHT)/2-15, TW_WIDTH, TW_HEIGHT, _vram),
-	char_base(_char_base), map_base(_map_base),
+	char_base(_char_base), map_base(_map_base), palette_offset(_palette_offset),
 	kx(x+4), ky(y+16),
 	mode(TYPEWRITER_MODE_NORMAL),
 	trans_reg_x(_trans_reg_x), trans_reg_y(_trans_reg_y), cursorpos(0), strlength(0)
 {
-	//char_base = (u16*)CHAR_BASE_BLOCK_SUB(1);
-	//map_base = (u16*)SCREEN_BASE_BLOCK_SUB(12);
-	palette_offset = 3; // I have no clue why, but reading the _palette_offset parameter causes an immediate crash.
-	//palette_offset = _palette_offset;
-	
 	onOk = 0;
 	onCancel = 0;
 
@@ -95,10 +92,8 @@ Typewriter::~Typewriter(void)
 	delete buttoncancel;
 	free(text);
 	
-	for(u8 py=0; py<12; ++py) {
-		for(u8 px=0; px<26; ++px) {
-		  map_base[32*py+px] = 0;
-		}
+	for(int py=0; py<TW_TILE_HEIGHT; ++py) {
+		memset(map_base + 32*py, 0, TW_TILE_WIDTH*2);
 	}
 }
 
@@ -112,20 +107,20 @@ void Typewriter::pleaseDraw(void) {
 void Typewriter::penDown(u8 px, u8 py)
 {
 	// Inside the kb?
-	if((px>=kx)&&(px<=kx+26*8)&&(py>=ky)&&(py<=ky+12*8))
+	if((px>=kx)&&(px<=kx+TW_TILE_WIDTH*8)&&(py>=ky)&&(py<=ky+TW_TILE_HEIGHT*8))
 	{
 		tilex = (px-kx)/8;
 		tiley = (py-ky)/8;
 		
 		setTile(tilex, tiley, 4);
 		
-		if(tilex>=1 && tilex<=24 && tiley<=12)
+		if(tilex>=1 && tilex<(TW_TILE_WIDTH-1) && tiley<TW_TILE_HEIGHT)
 		{
 			char c;
 			if((mode==TYPEWRITER_MODE_CAPS)||(mode==TYPEWRITER_MODE_SHIFT))
-				c = typewriter_Hit_Shift[tilex+(tiley*26)];
+				c = typewriter_Hit_Shift[tilex+(tiley*TW_TILE_WIDTH)];
 			else
-				c = typewriter_Hit[tilex+(tiley*26)];
+				c = typewriter_Hit[tilex+(tiley*TW_TILE_WIDTH)];
 			
 			if(c==CAP)
 			{
@@ -185,7 +180,7 @@ void Typewriter::penDown(u8 px, u8 py)
 		}
 		
 	// Inside the button area?
-	} else if ((px>x)&&(px<x+TW_WIDTH)&&(py<y+TW_HEIGHT)&&(py>ky+12*8)) {
+	} else if ((px>x)&&(px<x+TW_WIDTH)&&(py<y+TW_HEIGHT)&&(py>ky+TW_TILE_HEIGHT*8)) {
 		gui.penDown(px, py);
 	}
 }
@@ -283,15 +278,15 @@ void Typewriter::redraw(void)
 	
 	u16 map_offset;
 	if((mode == TYPEWRITER_MODE_CAPS)||(mode == TYPEWRITER_MODE_SHIFT)) {
-		map_offset = 312;
+		map_offset = TW_TILE_WIDTH*TW_TILE_HEIGHT;
 	} else {
 		map_offset = 0;
 	}
 	
-    for(u8 py=0; py<12; ++py) {
-		for(u8 px=0; px<26; ++px) {
-		  map_base[32*py+px] = typewriter_Map[map_offset+26*py+px];
-          map_base[32*py+px] |= (3 << 12); // Write the pal index to bits 12 and 13
+	u16 tile_attr = palette_offset << 12;
+    for(u8 py=0; py<TW_TILE_HEIGHT; ++py) {
+		for(u8 px=0; px<TW_TILE_WIDTH; ++px) {
+		  map_base[32*py+px] = typewriter_Map[map_offset+26*py+px] | tile_attr;
         }
     }
 }
@@ -316,7 +311,7 @@ void Typewriter::setTile(int x, int y, int pal)
 	char c;
 	int x2, y2;
 
-	c = typewriter_Hit[(y*26)+x];
+	c = typewriter_Hit[(y*TW_TILE_WIDTH)+x];
 
 	if(!c) return;
 
@@ -324,20 +319,20 @@ void Typewriter::setTile(int x, int y, int pal)
 	map_base[(y*32)+x] |= (pal << 12);
 
 	x2 = x; y2 = y;
-	while(typewriter_Hit[(y2*26)+x2]==c)
+	while(typewriter_Hit[(y2*TW_TILE_WIDTH)+x2]==c)
 	{
 		map_base[(y2*32)+x2] &= ~(7 << 12);
 		map_base[(y2*32)+x2] |= (pal << 12);
 
 		x2 = x;
-		while(typewriter_Hit[(y2*26)+x2]==c)
+		while(typewriter_Hit[(y2*TW_TILE_WIDTH)+x2]==c)
 		{
 			map_base[(y2*32)+x2] &= ~(7 << 12);
 			map_base[(y2*32)+x2] |= (pal << 12);
 			x2++;
 		}
 		x2 = x;
-		while(typewriter_Hit[(y2*26)+x2]==c)
+		while(typewriter_Hit[(y2*TW_TILE_WIDTH)+x2]==c)
 		{
 			map_base[(y2*32)+x2] &= ~(7 << 12);
 			map_base[(y2*32)+x2] |= (pal << 12);
@@ -349,20 +344,20 @@ void Typewriter::setTile(int x, int y, int pal)
 	}
 
 	x2 = x; y2 = y;
-	while(typewriter_Hit[(y2*26)+x2]==c)
+	while(typewriter_Hit[(y2*TW_TILE_WIDTH)+x2]==c)
 	{
 		map_base[(y2*32)+x2] &= ~(7 << 12);
 		map_base[(y2*32)+x2] |= (pal << 12);
 
 		x2 = x;
-		while(typewriter_Hit[(y2*26)+x2]==c)
+		while(typewriter_Hit[(y2*TW_TILE_WIDTH)+x2]==c)
 		{
 			map_base[(y2*32)+x2] &= ~(7 << 12);
 			map_base[(y2*32)+x2] |= (pal << 12);
 			x2++;
 		}
 		x2 = x;
-		while(typewriter_Hit[(y2*26)+x2]==c)
+		while(typewriter_Hit[(y2*TW_TILE_WIDTH)+x2]==c)
 		{
 			map_base[(y2*32)+x2] &= ~(7 << 12);
 			map_base[(y2*32)+x2] |= (pal << 12);

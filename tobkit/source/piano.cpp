@@ -37,10 +37,10 @@ char_base(_char_base), map_base(_map_base), key_labels_visible(false)
 {
 	onNote = 0;
 	onRelease = 0;
-	dmaCopy((uint16*)piano_Palette, (uint16*)BG_PALETTE_SUB, 32);
-	dmaCopy((uint16*)piano_fullnotehighlight_Palette, (uint16*)BG_PALETTE_SUB+16, 32);
-	dmaCopy((uint16*)piano_halfnotehighlight_Palette, (uint16*)BG_PALETTE_SUB+32, 32);
-	dmaCopy((uint16*)pianoTiles, char_base, 736);
+	dmaCopy(piano_Palette, BG_PALETTE_SUB, 32);
+	dmaCopy(piano_fullnotehighlight_Palette, BG_PALETTE_SUB+16, 32);
+	dmaCopy(piano_halfnotehighlight_Palette, BG_PALETTE_SUB+32, 32);
+	dmaCopy(pianoTiles, char_base, sizeof(pianoTiles));
 	
 	memset(key_labels, ' ', 24);
 }
@@ -155,7 +155,7 @@ void Piano::draw(void)
 	// Copy the piano to the screen
 	for(int py=0; py<PIANO_HEIGHT_TILES; ++py)
 	{
-		memcpy(map_base + (32*(py+y/8)+(x/8)), pianoMap, PIANO_WIDTH_TILES * 2);
+		memcpy(map_base + (32*(py+y/8)+(x/8)), pianoMap + (PIANO_WIDTH_TILES * py), PIANO_WIDTH_TILES * 2);
 	}
 }
 
