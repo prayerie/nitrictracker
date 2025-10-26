@@ -3860,8 +3860,13 @@ int main(int argc, char **argv) {
 	bgSetPriority(sub_bg, 0);
 
 	// Special effects
+#ifdef DEBUG
+	REG_BLDCNT = BLEND_ALPHA | BLEND_SRC_BG0 | BLEND_DST_BG2;
+	REG_BLDALPHA = 0x040C;
+#else
 	REG_BLDCNT_SUB = BLEND_FADE_BLACK | BLEND_SRC_BG2 | BLEND_SRC_BG0;
 	REG_BLDCNT = BLEND_FADE_BLACK | BLEND_SRC_BG2 | BLEND_SRC_BG0;
+#endif
 
 	// Setup text
 	consoleInit(NULL, 0, BgType_Text4bpp, BgSize_T_256x256, 4, 0, true, true);
