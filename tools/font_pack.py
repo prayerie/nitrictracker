@@ -48,19 +48,22 @@ with open(font_index_path, "rb") as fp:
 
 with open(sys.argv[2], "wb") as fp:
 	for char_id in range(0, char_count):
-		char_widths[char_id] = 0
+		width = 0
 		for iy in range(0, font_height):
 			v = 0
 			for ix in range(0, font_width):
 				pxl = im.getpixel((ix + (char_id * font_width), iy))
 				if pxl[0] < 128:
 					v = v | (1 << ix)
-					if (ix + 1) > char_widths[char_id]:
-						char_widths[char_id] = ix + 1
+					if (ix + 1) > width:
+						width = ix + 1
 			for ix in range(0, font_width, 8):
 				fp.write(struct.pack("<B", (v >> ix) & 255))
-		if char_widths[char_id] == 0:
-			char_widths[char_id] = space_width
+		if width == 0:
+			width = space_width
+		if char_id == 79: # /
+			width = width - 1
+		char_widths[char_id] = width
 
 with open(font_data_path, "w") as fp:
 	default_idx = char_index.get(ord('?'), 0)
