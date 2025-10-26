@@ -510,10 +510,13 @@ void updateSampleList(Instrument *inst)
 	}
 }
 
-void updateMemoryState(void)
+void updateMemoryState(bool print)
 {
 	memoryiindicator->pleaseDraw();
 	memoryiindicator_disk->pleaseDraw();
+#ifdef DEBUG
+	if (print) PrintFreeMem();
+#endif
 }
 
 void updateFilesystemState(bool draw)
@@ -722,8 +725,6 @@ void setSong(Song *newsong)
 	free(str);
 
 	drawMainScreen();
-
-	PrintFreeMem();
 }
 
 bool loadSample(const char *filename_with_path)
@@ -782,9 +783,13 @@ bool loadSample(const char *filename_with_path)
 
 void showSlowLoadOperation(std::function<const char*(void)> loadOp)
 {
-	SetYtrigger(191);
-	irqSet(IRQ_VCOUNT, updateMemoryState);
-	irqEnable(IRQ_VCOUNT);
+	// This IRQ approach occasionally causes a libc mutex deadlock.
+	// A better idea would be to use cothread_yield(); or a
+	// callback function.
+
+	// SetYtrigger(191);
+	// irqSet(IRQ_VCOUNT, updateMemoryState);
+	// irqEnable(IRQ_VCOUNT);
 
 	mb = new MessageBox(&sub_vram, "one moment", 0);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
@@ -792,18 +797,16 @@ void showSlowLoadOperation(std::function<const char*(void)> loadOp)
 	mb->pleaseDraw();
 
 	const char* res = loadOp();
+	updateMemoryState(true);
 	DC_FlushAll();
 
 	deleteMessageBox();
 
-	irqDisable(IRQ_VCOUNT);
-	irqClear(IRQ_VCOUNT);
+	// irqDisable(IRQ_VCOUNT);
+	// irqClear(IRQ_VCOUNT);
 
 	if (res != NULL)
 		showMessage(res, true);
-#ifdef DEBUG
-	PrintFreeMem();
-#endif
 }
 
 void handleDelfileConfirmed(void)
@@ -878,8 +881,6 @@ void handleLoad(void)
 			return !success ? "wav loading failed" : (const char*) NULL;
 		});
 	}
-
-	updateMemoryState();
 }
 
 // Reads filename and path from fileselector and saves the file
@@ -964,7 +965,7 @@ void handleSave(void)
 		saveFile();
 	}
 
-	updateMemoryState();
+	updateMemoryState(false);
 }
 
 
@@ -1576,7 +1577,7 @@ void zapPatterns(void)
 	drawMainScreen();
 
 	CommandSetSong(song);
-	updateMemoryState();
+	updateMemoryState(true);
 }
 
 void zapInstruments(void)
@@ -1599,14 +1600,14 @@ void zapInstruments(void)
 	sampledisplay->setSample(0);
 
 	CommandSetSong(song);
-	updateMemoryState();
+	updateMemoryState(true);
 }
 
 void zapSong(void) {
 	deleteMessageBox();
 	delete song;
 	setSong(new Song());
-	updateMemoryState();
+	updateMemoryState(true);
 }
 
 void handleZap(void)
@@ -1742,7 +1743,7 @@ void handleFileChange(File file)
 					DC_FlushAll();
 					CommandPlaySample(smp, 4*12, 255, 0);
 
-					updateMemoryState();
+					updateMemoryState(false);
 
 					// When the sample has finished playing, the arm7 sends a signal,
 					// so the arm9 can delete the sampleb
@@ -1770,7 +1771,7 @@ void handlePreviewSampleFinished(void)
 	delete state->preview_sample;
 	state->preview_sample = 0;
 
-	updateMemoryState();
+	updateMemoryState(false);
 }
 
 void setNoteVol(u16 vol)
