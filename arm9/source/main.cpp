@@ -228,7 +228,7 @@ GUI *gui;
 	BitButton *buttonundo, *buttonredo;
 	PatternView *pv;
 	NumberSlider *nsnotevolume, *nseffectcmd, *nseffectpar;
-	Label *labelmute, *labelnotevol, *labeleffectcmd, *labeleffectpar, *labeltranspose;
+	Label *labelnotevol, *labeleffectcmd, *labeleffectpar, *labeltranspose;
 	CheckBox *cbtoggleeffects;
 // </Main Screen>
 
@@ -3357,11 +3357,8 @@ void setupGUI(bool dldi_enabled)
 		buttonswitchmain = new BitButton(234, 1  , 21, 21, &main_vram_back, icon_flp_raw, 18, 18);
 		buttonswitchmain->registerPushCallback(switchScreens);
 
-		labelmute = new Label(226, 23, 32, 8, &main_vram_back, false, true);
-		labelmute->setCaption("mute");
-
-		buttonunmuteall = new Button(225, 32, 30, 12, &main_vram_back);
-		buttonunmuteall->setCaption("none");
+		buttonunmuteall = new Button(225, 31, 30, 12, &main_vram_back);
+		buttonunmuteall->setCaption("-m/s");
 
 		labelnotevol = new Label(230, 44, 23, 10, &main_vram_back, false, true);
 		labelnotevol->setCaption("vol");
@@ -3446,7 +3443,6 @@ void setupGUI(bool dldi_enabled)
 		pv->setSong(song);
 		pv->registerMuteCallback(handleMuteChannelsChanged);
 
-		gui->registerWidget(labelmute, 0, MAIN_SCREEN);
 		gui->registerWidget(buttonunmuteall, 0, MAIN_SCREEN);
 		gui->registerWidget(buttonswitchmain, 0, MAIN_SCREEN);
 		gui->registerWidget(labelnotevol, 0, MAIN_SCREEN);
