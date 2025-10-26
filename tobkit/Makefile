@@ -13,7 +13,7 @@ ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 
 SOURCEDIRS	:= source
 INCLUDEDIRS	:= include
-GFXDIRS		:=
+GFXDIRS		:= graphics
 BINDIRS		:=
 FONTSDIRS	:= fonts
 BITMAPSDIRS	:= bitmaps

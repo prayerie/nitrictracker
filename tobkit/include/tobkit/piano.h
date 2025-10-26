@@ -22,8 +22,8 @@ limitations under the License.
 
 namespace tobkit {
 
-static constexpr u32 PIANO_WIDTH_TILES = 28;
-static constexpr u32 PIANO_HEIGHT_TILES = 5;
+static constexpr int PIANO_WIDTH_TILES = 28;
+static constexpr int PIANO_HEIGHT_TILES = 5;
 
 class Piano: public Widget {
 	public:

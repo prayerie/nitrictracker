@@ -19,10 +19,9 @@ limitations under the License.
 
 #include "tobkit/piano.h"
 
-#include "tobkit/piano.raw.h"
-#include "tobkit/piano.pal.h"
-#include "tobkit/piano.map.h"
-#include "tobkit/piano_hit.h"
+#include "piano.h"
+#include "piano_pal.h"
+#include "piano_hit.h"
 
 using namespace tobkit;
 
@@ -41,7 +40,7 @@ char_base(_char_base), map_base(_map_base), key_labels_visible(false)
 	dmaCopy((uint16*)piano_Palette, (uint16*)BG_PALETTE_SUB, 32);
 	dmaCopy((uint16*)piano_fullnotehighlight_Palette, (uint16*)BG_PALETTE_SUB+16, 32);
 	dmaCopy((uint16*)piano_halfnotehighlight_Palette, (uint16*)BG_PALETTE_SUB+32, 32);
-	dmaCopy((uint16*)piano_Tiles, char_base, 736);
+	dmaCopy((uint16*)pianoTiles, char_base, 736);
 	
 	memset(key_labels, ' ', 24);
 }
@@ -151,17 +150,12 @@ void Piano::setKeyLabel(u8 key, char label)
 void Piano::draw(void)
 {
 	// Fill screen with empty tiles
-	u16 i;
-	for(i=0;i<768;++i) map_base[i] = 28;
+	for (int i = 0; i < 768; i++) map_base[i] = 28;
 	
 	// Copy the piano to the screen
-	u8 px, py;
-	for(py=0; py<PIANO_HEIGHT_TILES; ++py)
+	for(int py=0; py<PIANO_HEIGHT_TILES; ++py)
 	{
-		for(px=0; px<PIANO_WIDTH_TILES; ++px)
-		{
-			map_base[32*(py+y/8)+(px+x/8)] = piano_Map[29*py+px+1];
-		}
+		memcpy(map_base + (32*(py+y/8)+(x/8)), pianoMap, PIANO_WIDTH_TILES * 2);
 	}
 }
 
