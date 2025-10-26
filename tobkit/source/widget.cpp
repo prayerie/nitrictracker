@@ -145,10 +145,12 @@ void Widget::drawString(const char* str, u8 tx, u8 ty, u8 maxwidth, u16 color, u
 	u8 height = fontheight;
 	if (height > maxheight) height = maxheight;
 
-	while( (*str != '\0') && (drawpos+6<maxwidth) )
+	while(*str)
 	{
 		charidx = font_8x11.char_index[(u8) *str];
 		u8 width = font_8x11.char_widths[charidx];
+		if ((drawpos+width) > maxwidth)
+			break;
 
 		for(j=0;j<height;++j) {
 			col = font_8x11.data[fontheight*charidx + j];
