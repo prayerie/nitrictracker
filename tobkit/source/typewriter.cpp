@@ -254,7 +254,7 @@ void Typewriter::setTheme(Theme *theme_, u16 bgcolor_)
 
 void Typewriter::draw(void)
 {
-	drawFullBox(0, 0, TW_WIDTH, TW_HEIGHT, theme->col_light_bg);
+	drawFullBox(1, 1, TW_WIDTH - 2, TW_HEIGHT - 2, theme->col_light_bg);
 	drawBorder();
 	gui.draw();
 	

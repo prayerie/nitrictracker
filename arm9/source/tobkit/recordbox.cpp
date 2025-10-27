@@ -150,11 +150,11 @@ void RecordBox::setTheme(Theme *theme_, u16 bgcolor_)
 
 void RecordBox::draw(void)
 {
-	drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 0, 0, width, 16);
-	drawHLine(0,16, width, theme->col_outline);
+	drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 1, 1, width - 2, 15);
+	drawHLine(1, 16, width - 2, theme->col_outline);
 	if(recording==true)
 	{
-		drawFullBox(0, 17, width, RECORDBOX_HEIGHT-17, theme->col_signal);
+		drawFullBox(1, 17, width - 2, RECORDBOX_HEIGHT-18, theme->col_signal);
 		labelmsg->setTheme(theme, theme->col_signal);
 		labelmsg2->setTheme(theme, theme->col_signal);
 		buttoncancel->setTheme(theme, theme->col_signal);
@@ -165,7 +165,7 @@ void RecordBox::draw(void)
 	}
 	else
 	{
-		drawFullBox(0, 17, width, RECORDBOX_HEIGHT-17, theme->col_light_bg);
+		drawFullBox(1, 17, width - 2, RECORDBOX_HEIGHT-18, theme->col_light_bg);
 		labelrec->hide();
 		labelmsg->show();
 		labelmsg2->show();

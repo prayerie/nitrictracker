@@ -116,7 +116,7 @@ void ToggleButton::draw(void)
 	if(!isExposed()) return;
 
 	u16 bg = (color_bg & BIT(15)) ? color_bg : theme->col_dark_ctrl;
-	drawFullBox(0, 0, width, height, bg);
+	drawFullBox(1, 1, width - 2, height - 2, bg);
 	drawBorder();
 
 	u16 col;

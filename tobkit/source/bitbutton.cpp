@@ -77,12 +77,12 @@ void BitButton::draw(u8 down)
 	if(enabled)
 	{
 		if(down) {
-			drawGradient(theme->col_light_ctrl, theme->col_dark_ctrl, 0, 0, width, height);
+			drawGradient(theme->col_light_ctrl, theme->col_dark_ctrl, 1, 1, width - 2, height - 2);
 		} else {
-			drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 0, 0, width, height);
+			drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 1, 1, width - 2, height - 2);
 		}
 	} else {
-		drawGradient(theme->col_light_ctrl_disabled, theme->col_dark_ctrl_disabled, 0, 0, width, height);
+		drawGradient(theme->col_light_ctrl_disabled, theme->col_dark_ctrl_disabled, 1, 1, width - 2, height - 2);
 	}
 	drawBorder();
 

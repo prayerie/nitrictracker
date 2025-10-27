@@ -458,7 +458,7 @@ void EnvelopeEditor::draw(void)
 	//
 	// Border and background
 	//
-	drawFullBox(0, 0, width, height, theme->col_dark_bg);
+	drawFullBox(1, 1, width - 2, height - 2, theme->col_dark_bg);
 	drawBorder();
 
 	if( (draw_mode == true) && (n_points == 0) )

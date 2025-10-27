@@ -391,7 +391,7 @@ void SampleDisplay::draw(void)
 	//
 	// Border and background
 	//
-	drawFullBox(0, 0, width, height, theme->col_dark_bg);
+	drawFullBox(1, 1, width - 2, height - 2, theme->col_dark_bg);
 	
 	if(active==false) {
 		drawBorder();
