@@ -39,13 +39,13 @@ namespace tobkit {
 #define PV_CHAR_WIDTH	4
 #define PV_CHAR_HEIGHT	8
 
-#define MUTE_REL_X	8
+#define MUTE_REL_X	9
 #define MUTE_X(i)		(PV_BORDER_WIDTH+(i)*getCellWidth()+MUTE_REL_X)
 #define MUTE_Y		1
 #define MUTE_WIDTH	10
 #define MUTE_HEIGHT	9
 
-#define SOLO_REL_X	19
+#define SOLO_REL_X	20
 #define SOLO_X(i)		(PV_BORDER_WIDTH+(i)*getCellWidth()+SOLO_REL_X)
 #define SOLO_Y		MUTE_Y
 #define SOLO_WIDTH	MUTE_WIDTH
@@ -228,16 +228,13 @@ class PatternView: public Widget {
 
 			u8 realx = PV_BORDER_WIDTH+1+px*getCellWidth();
 			u8 realy = 2+py*PV_CELL_HEIGHT;
-			
+
 			// Check for empty note or stop-note
 			if(cell->note == STOP_NOTE) {
-				
 				drawChar(DOT,   realx                , realy, notecol);
 				drawChar(MINUS, realx+1*PV_CHAR_WIDTH, realy, notecol);
 				drawChar(DOT,   realx+2*PV_CHAR_WIDTH, realy, notecol);
-				
 			} else if(cell->note != EMPTY_NOTE) {
-				
 				// Note
 				drawChar(notes_chars[cell->note%12], realx, realy, notecol);
 				if(notes_signs[cell->note%12]) {
@@ -258,11 +255,11 @@ class PatternView: public Widget {
 			
 			if(effects_visible) {
 				// Effect and effect parameter
-        if (cell->effect != 0xff)
-          drawChar(cell->effect, realx+7*PV_CHAR_WIDTH+3, realy, effectcol);
-				
-        if (cell->effect_param != 0x00)
-          drawHexByte(cell->effect_param, realx+8*PV_CHAR_WIDTH+3, realy, effectparamcol);
+				if (cell->effect != 0xff)
+					drawChar(cell->effect, realx+7*PV_CHAR_WIDTH+3, realy, effectcol);
+						
+				if (cell->effect_param != 0x00)
+					drawHexByte(cell->effect_param, realx+8*PV_CHAR_WIDTH+3, realy, effectparamcol);
 			}
 		}
 		
@@ -273,7 +270,7 @@ class PatternView: public Widget {
 			if (effects_visible) {
 				cell_width = 45;
 			} else {
-				cell_width = 31;
+				cell_width = 32;
 			}
 			return cell_width;
 		}

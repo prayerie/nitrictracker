@@ -2786,8 +2786,8 @@ void sampleDrawToggle(bool on)
 	sampledisplay->setDrawMode(on);
 }
 
-#define RIGHT_SIDE_BUTTON_WIDTH 28
-#define RIGHT_SIDE_BUTTON_X 227
+#define RIGHT_SIDE_BUTTON_WIDTH 30
+#define RIGHT_SIDE_BUTTON_X 225
 
 void setupGUI(bool dldi_enabled)
 {
