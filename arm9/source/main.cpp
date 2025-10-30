@@ -599,6 +599,7 @@ void handleSampleChange(u16 newsample)
 	Sample *smp = inst->getSample(newsample);
 	sampleChange(smp);
 }
+
 void handleInstChange(u16 newinst)
 {
 
@@ -1699,56 +1700,41 @@ void handleFileChange(File file)
 			strncpy(state->sample_filename, str, STATE_FILENAME_LEN);
 		}
 
-		// Preview wav files
+		// Preview WAV files
 		if(slen > 4 && (strcasecmp(&str[slen-4], ".wav") == 0) && (settings->getSamplePreview() == true) )
 		{
-			// Stop playing sample if necessary
-			CommandStopInst(0);
+			// Pause song playback if ongoing
+			if(state->playing)
+				pausePlay();
 
-			// Check if it's not too big
-			u32 smpsize = my_getFileSize(file.name_with_path.c_str());
+			debugprintf("previewing\n");
 
-			// TODO: instead of this
-			u8* testptr = (u8*)malloc(smpsize); // Try to malloc it
-			if(testptr == 0)
+			// Load sample
+			bool success;
+			Sample *smp = new Sample(file.name_with_path.c_str(), false, &success);
+			if(!success)
 			{
-				debugprintf("not enough ram for preview\n");
+				delete smp;
+				return;
 			}
-			else
-			{
-				debugprintf("previewing\n");
-				free(testptr);
+		
+			updateMemoryState(false);
 
-				// Load sample
-				bool success;
-				Sample *smp = new Sample(file.name_with_path.c_str(), false, &success);
-				if(!success)
-				{
-					delete smp;
-				}
-				else
-				{
-					// Stop and delete previously playing preview sample
-					if(state->preview_sample)
-					{
-						CommandStopSample(0);
-						while(state->preview_sample)
-						{
-							cothread_yield_irq(IRQ_VBLANK);
-						}
-					}
+			// Stop and delete previously playing preview sample
+			if(state->preview_sample)
+				CommandStopSample(0);
 
-					// Play it
-					state->preview_sample = smp;
-					DC_FlushAll();
-					CommandPlaySample(smp, 4*12, 255, 0);
+			// Wait until previously playing preview sample is deleted
+			while(state->preview_sample)
+				cothread_yield_irq(IRQ_VBLANK);
 
-					updateMemoryState(false);
+			// Play it
+			state->preview_sample = smp;
+			DC_FlushAll();
+			CommandPlaySample(smp, 4*12, 255, 0);
 
-					// When the sample has finished playing, the arm7 sends a signal,
-					// so the arm9 can delete the sampleb
-				}
-			}
+			// When the sample has finished playing, the arm7 sends a signal,
+			// so the arm9 can delete the sample
 		}
 	}
 }
@@ -1771,7 +1757,8 @@ void handlePreviewSampleFinished(void)
 	delete state->preview_sample;
 	state->preview_sample = 0;
 
-	updateMemoryState(false);
+	// FIXME: this is still inside an IRQ, so may freeze
+	// updateMemoryState(false);
 }
 
 void setNoteVol(u16 vol)
