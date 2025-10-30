@@ -2786,6 +2786,9 @@ void sampleDrawToggle(bool on)
 	sampledisplay->setDrawMode(on);
 }
 
+#define RIGHT_SIDE_BUTTON_WIDTH 28
+#define RIGHT_SIDE_BUTTON_X 227
+
 void setupGUI(bool dldi_enabled)
 {
 	gui = new GUI();
@@ -3279,17 +3282,17 @@ void setupGUI(bool dldi_enabled)
 
 	lbsamples = new ListBox(141, 100, 114, 23, &sub_vram, MAX_INSTRUMENT_SAMPLES, true, false, true);
 
-	buttonswitchsub    = new BitButton(234, 1  , 21, 21, &sub_vram, icon_flp_raw, 18, 18);
+	buttonswitchsub    = new BitButton(236, 1  , 19, 19, &sub_vram, icon_flp_raw, 15, 15);
 	buttonplay         = new BitButton(180, 3  , 23, 15, &sub_vram, icon_play_raw, 12, 12, 5, 0, true);
 	buttonpause        = new BitButton(180, 3  , 23, 15, &sub_vram, icon_pause_raw, 12, 12, 5, 0, false);
 	buttonstop         = new BitButton(204, 3  , 23, 15, &sub_vram, icon_stop_raw, 12, 12, 5, 0);
 
-	buttonundo         = new BitButton(226, 127, 14, 12, &sub_vram, icon_undo_raw, 8, 8, 3, 2);
-	buttonredo         = new BitButton(226 + 15, 127, 14, 12, &sub_vram, icon_redo_raw, 8, 8, 3, 2);
-	buttoninsnote2     = new Button(225, 140, 30, 12, &sub_vram);
-	buttondelnote2     = new Button(225, 153, 30, 12, &sub_vram);
-	buttonemptynote    = new Button(225, 166, 30, 12, &sub_vram);
-	buttonstopnote     = new Button(225, 179, 30, 12, &sub_vram);
+	buttonundo         = new BitButton(RIGHT_SIDE_BUTTON_X, 127, 14, 12, &sub_vram, icon_undo_raw, 8, 8, 3, 2);
+	buttonredo         = new BitButton(RIGHT_SIDE_BUTTON_X + RIGHT_SIDE_BUTTON_WIDTH - 14, 127, 14, 12, &sub_vram, icon_redo_raw, 8, 8, 3, 2);
+	buttoninsnote2     = new Button(RIGHT_SIDE_BUTTON_X, 140, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
+	buttondelnote2     = new Button(RIGHT_SIDE_BUTTON_X, 153, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
+	buttonemptynote    = new Button(RIGHT_SIDE_BUTTON_X, 166, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
+	buttonstopnote     = new Button(RIGHT_SIDE_BUTTON_X, 179, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
 	buttonrenamesample = new Button(141, 124, 23, 12, &sub_vram, false);
 	buttonrenameinst   = new Button(141, 19 , 23, 12, &sub_vram);
 
@@ -3344,28 +3347,28 @@ void setupGUI(bool dldi_enabled)
 	tbmultisample->setCaption("+");
 
 	// <Main Screen>
-		buttonswitchmain = new BitButton(234, 1  , 21, 21, &main_vram_back, icon_flp_raw, 18, 18);
+		buttonswitchmain = new BitButton(236, 1  , 19, 19, &main_vram_back, icon_flp_raw, 15, 15);
 		buttonswitchmain->registerPushCallback(switchScreens);
 
-		buttonunmuteall = new Button(225, 31, 30, 12, &main_vram_back);
+		buttonunmuteall = new Button(RIGHT_SIDE_BUTTON_X, 22, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
 		buttonunmuteall->setCaption("-m/s");
 
-		labelnotevol = new Label(230, 44, 23, 10, &main_vram_back, false, true);
+		labelnotevol = new Label(RIGHT_SIDE_BUTTON_X + 5, 34, RIGHT_SIDE_BUTTON_WIDTH - 7, 9, &main_vram_back, false, true);
 		labelnotevol->setCaption("vol");
 
-		nsnotevolume	 = new NumberSlider(225, 54, 30, 17, &main_vram_back, 127, 0, 127, true, true);
+		nsnotevolume	 = new NumberSlider(RIGHT_SIDE_BUTTON_X, 45, RIGHT_SIDE_BUTTON_WIDTH, 17, &main_vram_back, 127, 0, 127, true, true);
 		nsnotevolume->registerPostChangeCallback(handleNoteVolumeChanged);
 
-		buttonsetnotevol = new Button(225, 70, 30, 12, &main_vram_back);
+		buttonsetnotevol = new Button(RIGHT_SIDE_BUTTON_X, 61, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
 		buttonsetnotevol->setCaption("set");
 		buttonsetnotevol->registerPushCallback(handleSetNoteVol);
 
-		labeltranspose = new Label(200, 1, 48, 12, &main_vram_back, false, true);
-		labeltranspose->setCaption("trps");
-		buttontransposedown = new Button(199, 13, 12, 12, &main_vram_back);
+		/* labeltranspose = new Label(200, 1, 48, 12, &main_vram_back, false, true);
+		labeltranspose->setCaption("trps"); */
+		buttontransposedown = new Button(RIGHT_SIDE_BUTTON_X, 74, 14, 12, &main_vram_back);
 		buttontransposedown->setCaption("-");
 		buttontransposedown->registerPushCallback(handleTransposeDown);
-		buttontransposeup = new Button(212, 13, 12, 12, &main_vram_back);
+		buttontransposeup = new Button(RIGHT_SIDE_BUTTON_X + RIGHT_SIDE_BUTTON_WIDTH - 14, 74, 14, 12, &main_vram_back);
 		buttontransposeup->setCaption("+");
 		buttontransposeup->registerPushCallback(handleTransposeUp);
 
@@ -3399,19 +3402,19 @@ void setupGUI(bool dldi_enabled)
 		//buttoncopy        = new BitButton(232,  74, 22, 21, &main_vram_back, icon_copy_raw, 16, 16, 3, 3);
 		//buttonpaste       = new BitButton(232,  96, 22, 21, &main_vram_back, icon_paste_raw, 16, 16, 3, 3);
 
-		buttoncut         = new Button(225,  86, 30, 12, &main_vram_back);
-		buttoncopy        = new Button(225,  99, 30, 12, &main_vram_back);
-		buttonpaste       = new Button(225, 112, 30, 12, &main_vram_back);
+		buttoncut         = new Button(RIGHT_SIDE_BUTTON_X,  88, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
+		buttoncopy        = new Button(RIGHT_SIDE_BUTTON_X, 101, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
+		buttonpaste       = new Button(RIGHT_SIDE_BUTTON_X, 114, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
 
 		buttoncut->setCaption("cut");
 		buttoncopy->setCaption("cp");
 		buttonpaste->setCaption("pst");
 
-		buttoncolselect   = new Button(225, 125, 30, 12, &main_vram_back);
-		buttoninsnote     = new Button(225, 140, 30, 12, &main_vram_back);
-		buttondelnote     = new Button(225, 153, 30, 12, &main_vram_back);
-		buttonemptynote2  = new Button(225, 166, 30, 12, &main_vram_back);
-		buttonstopnote2   = new Button(225, 179, 30, 12, &main_vram_back);
+		buttoncolselect   = new Button(RIGHT_SIDE_BUTTON_X, 127, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
+		buttoninsnote     = new Button(RIGHT_SIDE_BUTTON_X, 140, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
+		buttondelnote     = new Button(RIGHT_SIDE_BUTTON_X, 153, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
+		buttonemptynote2  = new Button(RIGHT_SIDE_BUTTON_X, 166, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
+		buttonstopnote2   = new Button(RIGHT_SIDE_BUTTON_X, 179, RIGHT_SIDE_BUTTON_WIDTH, 12, &main_vram_back);
 
 		buttonunmuteall->registerPushCallback(handleUnmuteAll);
 		buttoncut->registerPushCallback(handleCut);
@@ -3429,7 +3432,7 @@ void setupGUI(bool dldi_enabled)
 		buttondelnote->setCaption("del");
 		buttonemptynote2->setCaption("clr");
 
-		pv = new PatternView(0, 0, 200, 192, &main_vram_back, state);
+		pv = new PatternView(0, 0, RIGHT_SIDE_BUTTON_X, 192, &main_vram_back, state);
 		pv->setSong(song);
 		pv->registerMuteCallback(handleMuteChannelsChanged);
 
@@ -3438,7 +3441,7 @@ void setupGUI(bool dldi_enabled)
 		gui->registerWidget(labelnotevol, 0, MAIN_SCREEN);
 		gui->registerWidget(nsnotevolume, 0, MAIN_SCREEN);
 		gui->registerWidget(buttonsetnotevol, 0, MAIN_SCREEN);
-		gui->registerWidget(labeltranspose, 0, MAIN_SCREEN);
+		/* gui->registerWidget(labeltranspose, 0, MAIN_SCREEN); */
 		gui->registerWidget(buttontransposedown, 0, MAIN_SCREEN);
 		gui->registerWidget(buttontransposeup, 0, MAIN_SCREEN);
 #ifdef ENABLE_EFFECT_MENU
