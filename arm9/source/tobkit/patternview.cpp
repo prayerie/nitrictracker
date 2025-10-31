@@ -348,7 +348,7 @@ void PatternView::draw(void)
 	char numberstr[3];
 	for(u16 i=0;i<getNumVisibleChannels();++i)
 	{
-		drawFullBox(PV_BORDER_WIDTH+i*getCellWidth()+1, 1, 14, 11, theme->col_bg);
+		drawFullBox(PV_BORDER_WIDTH+i*getCellWidth()+1, 1, getCellWidth()-2, 11, theme->col_bg);
 		snprintf(numberstr, sizeof(numberstr), "%-2x", (u8) (hscrollpos+i));
 		drawString(numberstr, PV_BORDER_WIDTH+i*getCellWidth()+1, 1, theme->col_pv_lines, 255);
 	}
@@ -373,7 +373,7 @@ void PatternView::draw(void)
 				mute_col2 = theme->col_pv_cb_col2;
 			}
 			drawGradient(mute_col1, mute_col2, MUTE_X(i), MUTE_Y, MUTE_WIDTH, MUTE_HEIGHT);
-			drawString("m", PV_BORDER_WIDTH+i*getCellWidth()+9, 0, theme->col_text, 255);
+			drawString("m", PV_BORDER_WIDTH+i*getCellWidth()+MUTE_REL_X+1, 0, theme->col_text, 255);
 		}
 		
 		if(solo_channels[chn] == true)
@@ -388,7 +388,7 @@ void PatternView::draw(void)
 		}
 		
 		drawGradient(solo_col1, solo_col2, SOLO_X(i), SOLO_Y, SOLO_WIDTH, SOLO_HEIGHT);
-		drawString("s", PV_BORDER_WIDTH+i*getCellWidth()+20, 0, theme->col_text, 255);
+		drawString("s", PV_BORDER_WIDTH+i*getCellWidth()+SOLO_REL_X+2, 0, theme->col_text, 255);
 	}
 }
 
