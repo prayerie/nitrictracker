@@ -79,7 +79,7 @@ fat(use_fat), changed(false)
 			u32 conf_filesize = ftell(conf);
 			fseek(conf, 0, SEEK_SET);
 
-			char *confstr = (char*)calloc(1, conf_filesize);
+			char *confstr = (char*)calloc(1, conf_filesize+1);
 			fread(confstr, conf_filesize, 1, conf);
 			fclose(conf);
 
