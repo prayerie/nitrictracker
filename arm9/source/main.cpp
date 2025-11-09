@@ -1966,7 +1966,7 @@ void handleTypewriterSongnameOk(void)
 
 void showTypewriterForSongRename(void)
 {
-	if(!state->playing) {
+	if(!state->playing || state->pause) {
 		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, deleteTypewriter);
 	}
 }
