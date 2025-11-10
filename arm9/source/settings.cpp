@@ -48,7 +48,7 @@ fat(use_fat), changed(false)
 
 	snprintf(songpath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
 	snprintf(samplepath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
-	snprintf(themepath, SETTINGS_FILENAME_LEN, "%s/Themes/Default.nttheme", launch_path != NULL ? launch_path : "/data");
+	snprintf(themepath, SETTINGS_FILENAME_LEN, "%s/Default.nttheme", launch_path != NULL ? launch_path : "");
 	
 
 	if(fat == true)
