@@ -40,7 +40,6 @@ fat(use_fat), changed(false)
 {
 	songpath[SETTINGS_FILENAME_LEN] = '\0';
 	samplepath[SETTINGS_FILENAME_LEN] = '\0';
-	themename[THEME_NAME_LEN] = '\0';
 	themepath[SETTINGS_FILENAME_LEN] = '\0';
 
 	// might never have snprintf called
@@ -49,7 +48,7 @@ fat(use_fat), changed(false)
 
 	snprintf(songpath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
 	snprintf(samplepath, SETTINGS_FILENAME_LEN, "%s/", launch_path != NULL ? launch_path : "");
-	snprintf(themename, SETTINGS_FILENAME_LEN, "Default.nttheme");
+	snprintf(themepath, SETTINGS_FILENAME_LEN, "%s/Default.nttheme", launch_path != NULL ? launch_path : "");
 	
 
 	if(fat == true)
@@ -85,7 +84,7 @@ fat(use_fat), changed(false)
 
 			getConfigValue(confstr, "Samplepath", samplepath, SETTINGS_FILENAME_LEN, NULL);
 			getConfigValue(confstr, "Songpath", songpath, SETTINGS_FILENAME_LEN, NULL);
-
+			getConfigValue(confstr, "Themepath", themepath, SETTINGS_FILENAME_LEN, NULL);
 			getConfigValue(confstr, "Handedness", hstring, 20, "Right");
 			handedness = stringToHandedness(hstring);
 
@@ -102,16 +101,11 @@ fat(use_fat), changed(false)
 			lines_per_beat = strtoul(prevstring, NULL, 10);
 			if (!lines_per_beat || lines_per_beat > 64)
 				lines_per_beat = 8;
-
-			getConfigValue(confstr, "Theme", themename, SETTINGS_FILENAME_LEN, NULL);
 			
 			free(confstr);
 		}
 	}
 
-	snprintf(themepath, SETTINGS_FILENAME_LEN, "%s/Themes/%s",
-				launch_path != NULL ? launch_path : SETTINGS_DEFAULT_DATA_DIR,
-				themename); // will default to 'Default.nttheme' if no fat
 	theme = new tobkit::Theme(themepath, fat);
 }
 
@@ -181,6 +175,18 @@ void Settings::setTheme(tobkit::Theme *theme_)
 	changed = true;
 }
 
+void Settings::setThemePath(const char *themepath_) {
+	strncpy(themepath, themepath_, SETTINGS_FILENAME_LEN);
+	themepath[SETTINGS_FILENAME_LEN] = '\0';
+	changed = true;
+}
+
+char *Settings::getThemePath(void)
+{
+	return themepath;
+}
+
+
 char *Settings::getSongPath(void)
 {
     if(!dirExists(songpath)) {
@@ -212,6 +218,7 @@ void Settings::setSamplePath(const char* samplepath_)
 	changed = true;
 }
 
+
 bool Settings::writeIfChanged(void)
 {
 	if (!changed)
@@ -239,8 +246,8 @@ bool Settings::write(void)
 	boolToString(sample_preview, prevstring);
 	boolToString(stereo_output, stereostring);
 	boolToString(freq_47khz, freqstring);
-	fprintf(conf, "Samplepath = %s\nSongpath = %s\nHandedness = %s\nSample Preview = %s\nStereo Output = %s\n47kHz Output = %s\nLines Per Beat = %d\nTheme = %s\n",
-			samplepath, songpath, hstring, prevstring, stereostring, freqstring, lines_per_beat, themename);
+	fprintf(conf, "Samplepath = %s\nSongpath = %s\nThemepath = %s\nHandedness = %s\nSample Preview = %s\nStereo Output = %s\n47kHz Output = %s\nLines Per Beat = %d\n",
+			samplepath, songpath, themepath, hstring, prevstring, stereostring, freqstring, lines_per_beat);
 	fclose(conf);
 	return true;
 }
