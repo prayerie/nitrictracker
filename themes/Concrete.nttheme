@@ -2,8 +2,8 @@
 1=555555 ; Envelope editor background
 2=555555 ; Medium background
 3=888888 ; Light background
-4=888888 ; Lighter background
-5=666666 ; Light control / button gradient 1
+4=a7a7a7 ; Lighter background
+5=a3a3a3 ; Light control / button gradient 1
 6=bbbbbb ; Dark control / button gradient 2
 7=555555 ; Light control (disabled)
 8=555555 ; Dark control (disabled)
@@ -23,7 +23,7 @@
 22=333333 ; Tab/tab box outline
 23=000000 ; List item separator line
 24=000000 ; Tab icon
-25=bbbbbb ; Button icon and scrollbar arrows
+25=797979 ; Button icon and scrollbar arrows
 26=000000 ; Checkmark
 27=bbbbbb ; Text
 28=bbbbbb ; Text (light)

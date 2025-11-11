@@ -31,7 +31,7 @@
 30=16325d ; Text (value input)
 31=f542c3 ; Text (list items)
 32=765212 ; Text (highlighted list item)
-33=94fe07 ; Recording/signal (red)
+33=bfff6b ; Recording/signal (red)
 34=63ad00 ; Recording/signal (off, dark red)
 35=000000 ; Piano mapping label (naturals)
 36=ffffff ; Piano mapping label (inverted, sharps)
@@ -81,4 +81,4 @@
 80=d3cbeb ; List item separator line (vertical)
 81=eee78a ; Togglebutton background
 82=7d7948 ; Togglebutton foreground (off)
-83=62a906 ; Togglebutton foreground (on)
+83=a1e546 ; Togglebutton foreground (on)
