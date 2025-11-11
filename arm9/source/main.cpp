@@ -894,6 +894,12 @@ void saveFile(void)
 	stopPlay();
 
 	char *filename = labelFilename->getCaption();
+
+	// Create a .tmp file first, so the original file is not corrupted in the case of a crash
+	char *filename_tmp = (char*) malloc(strlen(filename) + 5);
+	strcpy(filename_tmp, filename);
+	strcat(filename_tmp, ".tmp");
+
 	chdir(fileselector->getDir().c_str());
 
 	debugprintf("saving %s ...\n", filename);
@@ -903,17 +909,34 @@ void saveFile(void)
 	mb->show();
 	mb->pleaseDraw();
 
+	bool saved = false;
 	int err = 0;
 	if(rbsong->getActive() == true) // Save the song
 	{
 		if(song != 0) {
-			err = xm_transport.save(filename, song);
+			err = xm_transport.save(filename_tmp, song);
+			saved = true;
 		}
 	}
 	else if(rbsample->getActive() == true) // Save the sample
 	{
-		song->getInstrument(state->instrument)->getSample(state->sample)->saveAsWav(filename);
+		if(song != 0) {
+			auto inst = song->getInstrument(state->instrument);
+			if (inst != 0) {
+				auto smp = inst->getSample(state->sample);
+				if (smp != 0) {
+					smp->saveAsWav(filename_tmp);
+					saved = true;
+				}
+			}
+		}
 	}
+
+	if (saved && err == 0) {
+		unlink(filename);
+		rename(filename_tmp, filename);
+	}
+	free(filename_tmp);
 
 	deleteMessageBox();
 	updateFilesystemState(true);

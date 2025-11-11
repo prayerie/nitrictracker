@@ -1,17 +1,29 @@
--- NitrousTracker DEV
+-- NitrousTracker v0.5.0 (2025-11-11)
+
+New features:
+
+- interface theming support! (prayerie)
+  - many themes are bundled with this release, with more to come
+  - the .nttheme format is documented here: https://docs.asie.pl/nitroustracker/contributing/theming/
 
 Improvements:
 
-- minor RAM usage improvements
+- disabled live memory indicator updates, improving stability
+- slight tweaks to UI font and button layout
+- songs and samples are now saved as .tmp files first, preventing data loss if a crash occurs
+  mid-saving
+- updated BlocksDS toolchain
 
 Fixes:
 
-- fixed not loading instrument values properly in edge cases (Arikari405)
+- [#146] fixed not displaying instrument values properly in edge cases, part 2 (Arikari405)
+- fixed incorrectly trying to load .xm files with OpenMPT format hacks (prayerie)
 - fixed regression in tab box rendering
 - fixed text being overzealously trimmed
-- other minor fixes
+- fixed typewriter not showing when paused (prayerie)
+- general stability improvements and minor fixes
 
--- NitrousTracker v0.4.16 (2025-07-12)
+-- NitrousTracker v0.4.16 (2025-10-21)
 
 Improvements:
 
