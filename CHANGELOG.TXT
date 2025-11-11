@@ -10,7 +10,7 @@ Improvements:
 
 - disabled live memory indicator updates, improving stability
 - slight tweaks to UI font and button layout
-- songs and samples are now saved as .tmp files first, preventing data if a crash occurs
+- songs and samples are now saved as .tmp files first, preventing data loss if a crash occurs
   mid-saving
 - updated BlocksDS toolchain
 
