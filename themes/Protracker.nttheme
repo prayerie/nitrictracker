@@ -1,0 +1,51 @@
+555555 ; Background
+555555 ; Dark background
+666666 ; Medium background
+888888 ; Light background
+000000 ; Lighter background
+bbbbbb ; Light control
+888888 ; Dark control
+888888 ; Light control (disabled)
+666666 ; Dark control (disabled)
+000000 ; List 1
+000000 ; List 2
+888888 ; List highlight 1
+bbbbbb ; List highlight 2
+000000 ; Outline
+000000 ; Tab outline
+f8f800 ; List separator line
+000000 ; Icon
+000000 ; Text
+ffdd00 ; Text (list items)
+3344ff ; Text (value)
+000000 ; Text (selected list item)
+f80000 ; Recording/signal
+900000 ; Recording/signal (off)
+000000 ; Piano mapping label (naturals)
+f8f8f8 ; Piano mapping label, inverted (sharps)
+38c828 ; Loop handles
+00f800 ; Envelope sustain line
+88c080 ; Memory usage: OK
+f8f800 ; Memory usage: Warning
+f80000 ; Memory usage: Alert
+000000 ; Keyboard cursor
+000000 ; Pattern - Background
+555555 ; Pattern - lines
+333333 ; Pattern - sublines
+f89000 ; Pattern - lines (recording)
+888888 ; Pattern - Cursor bar color 1
+555555 ; Pattern - Cursor bar color 2
+ff3377 ; Pattern - Cursor bar color 1 (highlight)
+aa0011 ; Pattern - Cursor bar color 2 (highlight)
+3344ff ; Pattern - Row numbers
+3344ff ; Pattern - Notes
+000000 ; Pattern - Notes (dark)
+3344ff ; Pattern - Instruments
+000000 ; Pattern - Instruments (dark)
+3344ff ; Pattern - Volume
+000000 ; Pattern - Volume (dark)
+3344ff ; Pattern - Effect command
+000000 ; Pattern - Effect command (dark)
+3344ff ; Pattern - Effect parameter
+000000 ; Pattern - Effect parameter (dark)
+888888 ; Pattern - Selection
