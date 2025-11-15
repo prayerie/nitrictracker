@@ -76,7 +76,7 @@ void RadioButton::draw(void)
 	
 	// Filled or not
 	if(active == true) {
-		drawFullBox(4, 4, 3, 3, theme->col_outline);
+		drawFullBox(4, 4, 3, 3, theme->col_checkmark);
 	}
 	
 	// Text
