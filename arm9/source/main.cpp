@@ -417,6 +417,14 @@ void handleNoteFill(u8 note, bool while_playing)
     }
 }
 
+void handleInstPlayed(u8 inst, u8 note, u32 offs) {
+	Instrument *inst_ = song->getInstrument(inst);
+	Sample *samp_ = inst_->getSampleForNote(note);
+	sampledisplay->setupCursor(samp_, note/*, offs*/);
+}
+
+
+
 void handleNoteStroke(u8 note)
 {
 	if (note == EMPTY_NOTE || note == STOP_NOTE) return;
@@ -448,6 +456,9 @@ void handleNoteStroke(u8 note)
 		kb->setKeyLabel(note, label);
 	}
 
+	if (song->getInstrument(state->instrument) != NULL)
+		handleInstPlayed(state->instrument, state->basenote + note, 0);
+	
 	// Play the note
 	// Send "play inst" command
 	CommandPlayInst(state->instrument, state->basenote + note, 255, 255); // channel==255 -> search for free channel
@@ -477,6 +488,8 @@ void handleNoteRelease(u8 note, bool moved)
 		redraw_main_requested = true;
 	}
 
+	//sampledisplay->eraseCursor();
+	sampledisplay->stopCursor(false);
 	CommandStopInst(255);
 
 #ifdef MIDI
@@ -3734,6 +3747,9 @@ void VblankHandler(void)
 	u16 keysup = keysUp();
 	u16 keysheld = keysHeld();
 	touchRead(&touch);
+
+	if (sampledisplay != NULL)
+		sampledisplay->moveCursorPos();
 
 	if(keysdown & KEY_TOUCH)
 	{

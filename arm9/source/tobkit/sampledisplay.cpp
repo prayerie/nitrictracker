@@ -43,14 +43,20 @@ SampleDisplay::SampleDisplay(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, S
 	pen_on_zoom_in(false), pen_on_zoom_out(false),
 	pen_on_scroll_left(false), pen_on_scroll_right(false), pen_on_scrollthingy(false), pen_on_scrollbar(false),
 	scrollthingypos(0), scrollthingywidth(width-2*SCROLLBUTTON_HEIGHT+2), pen_x_on_scrollthingy(0), zoom_level(0), scrollpos(0),
-	snap_to_zero_crossings(true), draw_mode(false)
+	snap_to_zero_crossings(true), draw_mode(false), currentSampleFreq(0), playback_pos(0), last_cursor_draw_x(0)
 {
-
+	for (int i = 0; i < DRAW_HEIGHT_S + 1; ++i) {
+		previous_cursor_pixels[i] = 0;
+	}
 }
 
 SampleDisplay::~SampleDisplay(void)
 {
-
+}
+void SampleDisplay::setTheme(Theme *theme_, u16 bgcolor_)
+{
+	last_cursor_draw_x = 0;
+	Widget::setTheme(theme_, bgcolor_);
 }
 
 void SampleDisplay::penDown(u8 px, u8 py)
@@ -62,6 +68,7 @@ void SampleDisplay::penDown(u8 px, u8 py)
 		draw_last_x = px - x;
 		draw_last_y = py - y;
 	} else {
+		last_cursor_draw_x = 0;
 		// Stylus on a loop point?
 		u32 loop_start_pos = sampleToPixel(smp->getLoopStart());//smp->getLoopStart() * (width-2) / smp->getNSamples();
 		u32 loop_end_pos   = sampleToPixel(smp->getLoopStart() + smp->getLoopLength());//(smp->getLoopStart() + smp->getLoopLength()) * (width-2) / smp->getNSamples();
@@ -233,6 +240,7 @@ void SampleDisplay::setSample(Sample *_smp)
 	if(_smp == 0) {
 		loop_points_visible = false;
 	}
+	last_cursor_draw_x = 0; // dont draw under-cursor-buffer over other sample
 	draw();
 }
 
@@ -315,7 +323,117 @@ void SampleDisplay::setSnapToZeroCrossing(bool snap)
 	snap_to_zero_crossings = snap;
 }
 
+void SampleDisplay::stopCursor(bool full_redraw = false)  {
+	playing = false;
+
+	if (full_redraw && last_cursor_draw_x != 0) {
+		draw();
+		last_cursor_draw_x = 0; // use 0 when we want to skip restoring under-cursor pixels
+	}
+}
+
+// commented out sections facilitating for 09xx command support
+// if/when it is added
+void SampleDisplay::setupCursor(Sample *_samp, u8 note/*, u32 offs_raw*/)  {
+	// setOffsetRaw(offs_raw);
+	// u8 note_ = note == NULL ? 12 : note;
+
+	stopCursor(true);
+
+	if (_samp != smp) {
+		eraseCursor();
+		return;
+	}
+
+	loop_rev = false;
+	smp = _samp;
+	playback_pos = 0;
+	setCurrentSampleFreq(smp->getPlaybackFreq(note));
+	playing = true;
+}
+
 /* ===================== PRIVATE ===================== */
+
+// backup the pixels that are about to be overwritten
+// by the cursor and only restore those when it moves,
+// rather than drawing the entire sample box every time
+void SampleDisplay::eraseCursor(void)
+{
+	if (last_cursor_draw_x != 0)
+		for (int i = 0; i < DRAW_HEIGHT + 1; ++i) {
+			*(*vram + SCREEN_WIDTH * (y + i + 1) + x + last_cursor_draw_x) = previous_cursor_pixels[i];
+		}
+}
+
+void SampleDisplay::moveCursorPos()
+{
+	if (smp == 0 || !isExposed())
+		return;
+	u8 looptype = smp->getLoop();
+	
+	u32 loopstart = smp->getLoopStart();
+	u32 looplen = smp->getLoopLength();
+	u64 step = ((u64)currentSampleFreq << 32) / 59.8261; // vblank
+	
+	if (loop_rev) {
+		if (step > playback_pos)
+			playback_pos = 0;
+		else
+			playback_pos -= step;
+	} else
+		playback_pos += step;
+
+	if (looptype == FORWARD_LOOP && (playback_pos + step) >> 32 >= loopstart + looplen)
+		playback_pos = ((u64)loopstart << 32);
+		
+	else if (looptype == PING_PONG_LOOP) {
+		// do not use playback_pos - step here,
+		// otherwise it will drift out of sync
+		if (loop_rev && playback_pos >> 32 <= loopstart) {
+			playback_pos = ((u64)loopstart << 32);
+			loop_rev = false;
+		}
+
+		if (!loop_rev && (playback_pos + step)  >> 32 >= loopstart + looplen) {
+			playback_pos = ((u64)(loopstart + looplen) << 32);
+			loop_rev = true;
+		}
+	} else if (looptype == NO_LOOP) {
+		if ((playback_pos >> 32) >= smp->getNSamples()) {
+			stopCursor(true);
+			return;
+		}
+	}
+	if (playback_pos != 0) {
+		u32 drawpix = sampleToPixel((playback_pos >> 32));
+
+		// draw the previous pixels on the previous cursor pos
+		eraseCursor();
+		if (drawpix < x + width) {
+			s32 draw_at_x = sampleToPixel(playback_pos >> 32);
+
+			u16 col_cursor = theme->col_env_sustain;
+
+			if (!playing)
+				return;
+				
+			// backup pixels that were underneath the cursor
+			if (last_cursor_draw_x != (u32)draw_at_x) {
+				last_cursor_draw_x = (u32)draw_at_x;
+				for(int i=0;i<DRAW_HEIGHT + 1;++i)
+					previous_cursor_pixels[i] = *(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x);
+			}
+
+			// ...and finally, draw the cursor itself
+			if (!(draw_at_x >= width + 1) && draw_at_x != 0) {
+				for(int i=0;i<DRAW_HEIGHT+1;++i) {
+					*(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x) = col_cursor;
+				}
+			}
+		}
+	}
+
+}
 
 long SampleDisplay::find_zero_crossing_near(long pos)
 {
