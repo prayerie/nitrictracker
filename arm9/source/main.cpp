@@ -488,7 +488,7 @@ void handleNoteRelease(u8 note, bool moved)
 		redraw_main_requested = true;
 	}
 
-	//sampledisplay->eraseCursor();
+	sampledisplay->eraseCursor();
 	sampledisplay->stopCursor(false);
 	CommandStopInst(255);
 

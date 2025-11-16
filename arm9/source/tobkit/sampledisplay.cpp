@@ -325,7 +325,6 @@ void SampleDisplay::setSnapToZeroCrossing(bool snap)
 
 void SampleDisplay::stopCursor(bool full_redraw = false)  {
 	playing = false;
-
 	if (full_redraw && last_cursor_draw_x != 0) {
 		draw();
 		last_cursor_draw_x = 0; // use 0 when we want to skip restoring under-cursor pixels
@@ -336,8 +335,6 @@ void SampleDisplay::stopCursor(bool full_redraw = false)  {
 // if/when it is added
 void SampleDisplay::setupCursor(Sample *_samp, u8 note/*, u32 offs_raw*/)  {
 	// setOffsetRaw(offs_raw);
-	// u8 note_ = note == NULL ? 12 : note;
-
 	stopCursor(true);
 
 	if (_samp != smp) {
@@ -346,7 +343,6 @@ void SampleDisplay::setupCursor(Sample *_samp, u8 note/*, u32 offs_raw*/)  {
 	}
 
 	loop_rev = false;
-	smp = _samp;
 	playback_pos = 0;
 	setCurrentSampleFreq(smp->getPlaybackFreq(note));
 	playing = true;
@@ -367,42 +363,50 @@ void SampleDisplay::eraseCursor(void)
 
 void SampleDisplay::moveCursorPos()
 {
-	if (smp == 0 || !isExposed())
+	if (smp == 0 || !isExposed() || !playing)
 		return;
 	u8 looptype = smp->getLoop();
 	
 	u32 loopstart = smp->getLoopStart();
 	u32 looplen = smp->getLoopLength();
+
+	// doing calculations with u32s is ok but the sync loss with the
+	// audio becomes noticeable after around 15 seconds from the 
+	// division imprecision, so prefer to use u64 for base calc 
+	// and just shift when needed
 	u64 step = ((u64)currentSampleFreq << 32) / 59.8261; // vblank
-	
+
 	if (loop_rev) {
-		if (step > playback_pos)
-			playback_pos = 0;
-		else
+		if (step > playback_pos) {
+			playback_pos = ((u64)loopstart << 32) + step - playback_pos;
+			loop_rev = false;
+		} else
 			playback_pos -= step;
 	} else
 		playback_pos += step;
 
-	if (looptype == FORWARD_LOOP && (playback_pos + step) >> 32 >= loopstart + looplen)
-		playback_pos = ((u64)loopstart << 32);
-		
+	u32 playback_pos32 = playback_pos >> 32;
+
+	if (looptype == FORWARD_LOOP && playback_pos32 >= loopstart + looplen) {
+		u64 loop_end = (u64)(loopstart + looplen) << 32;
+		playback_pos = ((u64)loopstart << 32) + (playback_pos - loop_end);
+	}
 	else if (looptype == PING_PONG_LOOP) {
-		// do not use playback_pos - step here,
-		// otherwise it will drift out of sync
-		if (loop_rev && playback_pos >> 32 <= loopstart) {
-			playback_pos = ((u64)loopstart << 32);
+		if (loop_rev && playback_pos32 <= loopstart) {
+			// 2*playback_pos, as the second one is used to calculate
+			// the error that needs to be corrected
+			playback_pos = 2 * ((u64)loopstart << 32) - playback_pos;
 			loop_rev = false;
 		}
-
-		if (!loop_rev && (playback_pos + step)  >> 32 >= loopstart + looplen) {
-			playback_pos = ((u64)(loopstart + looplen) << 32);
+		else if (!loop_rev && playback_pos32 >= loopstart + looplen) {
+			// same here
+			playback_pos = 2 * ((u64)(loopstart + looplen) << 32) - playback_pos;
 			loop_rev = true;
 		}
-	} else if (looptype == NO_LOOP) {
-		if ((playback_pos >> 32) >= smp->getNSamples()) {
-			stopCursor(true);
-			return;
-		}
+	}
+	else if (looptype == NO_LOOP && playback_pos32 >= smp->getNSamples()) {
+		stopCursor(true);
+		return;
 	}
 	if (playback_pos != 0) {
 		u32 drawpix = sampleToPixel((playback_pos >> 32));
