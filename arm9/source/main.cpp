@@ -93,6 +93,7 @@ using namespace tobkit;
 #include "sampleedit_all_raw.h"
 #include "sampleedit_none_raw.h"
 #include "sampleedit_del_raw.h"
+#include "sampleedit_trim_raw.h"
 #include "sampleedit_reverse_raw.h"
 #include "sampleedit_record_raw.h"
 #include "sampleedit_normalize_raw.h"
@@ -188,7 +189,7 @@ GUI *gui;
 
 	Label *labelsampleedit_select, *labelsampleedit_edit, *labelsampleedit_record;
 	BitButton *buttonsmpfadein, *buttonsmpfadeout, *buttonsmpselall, *buttonsmpselnone, *buttonsmpseldel,
-		*buttonsmpreverse, *buttonrecord, *buttonsmpnormalize;
+		*buttonsmpreverse, *buttonrecord, *buttonsmpnormalize, *buttonsmptrim;
 
 	GroupBox *gbsampleloop;
 	RadioButton::RadioButtonGroup *rbg_sampleloop;
@@ -2578,6 +2579,35 @@ void sample_del_selection(void)
 	sampledisplay->setSample(smp);
 }
 
+void sample_crop_selection(void)
+{
+	Instrument *inst = song->getInstrument(state->instrument);
+	if(inst==0) return;
+
+	Sample *smp = inst->getSample(state->sample);
+	if(smp==0) return;
+
+	stopPlay();
+
+	u32 startsample, endsample;
+	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
+	if(sel_exists==false) return;
+
+
+	if (startsample == endsample) return;
+	smp->delPart(1, startsample);
+
+	if (smp->getNSamples() + 1 <= endsample - startsample)
+		return;
+
+
+	smp->delPart(endsample - startsample, smp->getNSamples() - 1);
+
+	DC_FlushAll();
+
+	sampledisplay->setSample(smp);
+}
+
 void sample_fade_in(void)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
@@ -3145,6 +3175,9 @@ void setupGUI(bool dldi_enabled)
 		buttonsmpseldel = new BitButton(96, 128, 17, 17, &sub_vram, sampleedit_del_raw);
 		buttonsmpseldel->registerPushCallback(sample_del_selection);
 
+		buttonsmptrim = new BitButton(114, 128, 17, 17, &sub_vram, sampleedit_trim_raw);
+		buttonsmptrim->registerPushCallback(sample_crop_selection);
+
 		buttonsmpnormalize = new BitButton(114, 110, 17, 17, &sub_vram, sampleedit_normalize_raw);
 		buttonsmpnormalize->registerPushCallback(sample_show_normalize_window);
 
@@ -3152,6 +3185,7 @@ void setupGUI(bool dldi_enabled)
 		sampletabbox->registerWidget(buttonsmpselall, 0, 0);
 		sampletabbox->registerWidget(buttonsmpselnone, 0, 0);
 		sampletabbox->registerWidget(buttonsmpseldel, 0, 0);
+		sampletabbox->registerWidget(buttonsmptrim, 0, 0);
 		sampletabbox->registerWidget(buttonsmpfadein, 0, 0);
 		sampletabbox->registerWidget(buttonsmpfadeout, 0, 0);
 		sampletabbox->registerWidget(buttonsmpreverse, 0, 0);
