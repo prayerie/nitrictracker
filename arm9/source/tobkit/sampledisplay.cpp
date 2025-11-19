@@ -389,11 +389,7 @@ void SampleDisplay::draw(void)
 	if(!isExposed())
 		return;
 
-	//
-	// Border and background
-	//
-	drawFullBox(1, 1, width - 2, height - 2, theme->col_smp_bg);
-	
+	// Border
 	if(active==false) {
 		drawBorder(theme->col_outline);
 	} else {
@@ -401,30 +397,27 @@ void SampleDisplay::draw(void)
 	}
 
 	// Now comes sample-dependant stuff, so return if we have no sample
-	if((smp==0)||(smp->getNSamples()==0)) return;
+	if((smp==0)||(smp->getNSamples()==0)) {
+		drawFullBox(1, 1, width - 2, height - 2, theme->col_smp_bg);
+		return;
+	}
 
 	//
 	// Selection
 	//
 	s32 selleft = 0;
-	s32 selwidth = 0;
 	s32 selright = 0;
+	bool draw_selection = selection_exists;
 
-	if(selection_exists) {
+	if(draw_selection) {
 		selleft = sampleToPixel(std::min(selstart, selend));
 		selright = sampleToPixel(std::max(selstart, selend));
-		bool dontdraw = false;
 
 		if (selleft < 1) selleft = 1;
-		else if (selleft > (width-1)) dontdraw = true;
+		else if (selleft > (width-1)) draw_selection = false;
 
 		if (selright > width-1) selright = width-1;
-		else if (selright < 1) dontdraw = true;
-
-		selwidth = selright - selleft;
-		if(!dontdraw) {
-			drawFullBox(selleft, 1, selwidth, DRAW_HEIGHT+1, theme->col_smp_bg_sel);
-		}
+		else if (selright < 1) draw_selection = false;
 	}
 
 	//
@@ -483,14 +476,14 @@ void SampleDisplay::draw(void)
 	// Sample
 	//
 
-	u16 colortable[DRAW_HEIGHT+2];
+	/* u16 colortable[DRAW_HEIGHT+2];
 	u16 colortable_selected[DRAW_HEIGHT+2];
 	for(s32 i=0; i<DRAW_HEIGHT+2; i++) {
 		// colortable[i] = interpolateColor(theme->col_light_ctrl, theme->col_dark_ctrl, i<<4);
 		colortable[i] = theme->col_smp_waveform;
-		//colortable_selected[i] = ((colortable[i] >> 2) & 0x1CE7) | 0x8000;
+		// colortable_selected[i] = ((colortable[i] >> 2) & 0x1CE7) | 0x8000;
 		colortable_selected[i] = theme->col_smp_waveform_sel;
-	}
+	} */
 
 	int32 step = divf32(inttof32(smp->getNSamples() >> zoom_level), inttof32(width-2));
 	int32 pos = 0;
@@ -498,6 +491,7 @@ void SampleDisplay::draw(void)
 	u32 renderwindow = (u32)std::max(1, std::min(100, (int) ceil_f32toint(step)));
 
 	u16 middle = (DRAW_HEIGHT+2)/2;//-1;
+	u16 top = (DRAW_HEIGHT+2);
 
 	s32 lastmax=0, lastmin=0;
 	if(smp->is16bit() == true) {
@@ -507,7 +501,9 @@ void SampleDisplay::draw(void)
 
 		for(s32 i=1; i<s32(width-1); ++i)
 		{
-			u16 *colortable_current = (selection_exists && i >= selleft && i < selright) ? colortable_selected : colortable;
+			bool draw_selection_here = (draw_selection && i >= selleft && i < selright);
+			u16 colortable_current = draw_selection_here ? theme->col_smp_waveform_sel : theme->col_smp_waveform;
+			u16 bg_current = draw_selection_here ? theme->col_smp_bg_sel : theme->col_smp_bg;
 			data = &(base[f32toint(pos)]);
 
 			s32 maxsmp = -32767, minsmp = 32767;
@@ -526,12 +522,20 @@ void SampleDisplay::draw(void)
 				if(lastmax < miny) miny = lastmax;
 			}
 
-			for(s16 j=miny; j<=maxy; ++j) (*vram)[SCREEN_WIDTH*(y+middle-j)+x+i] = colortable_current[middle-j];
-
 			lastmax = maxy;
 			lastmin = miny;
 
-			*(*vram+SCREEN_WIDTH*(y+middle)+x+i) = colortable_current[middle];
+			miny += middle;
+			maxy += middle;
+			if (miny > maxy) {
+				miny = middle;
+				maxy = middle;
+			}
+
+			s16 j;
+			for(j=0; j<miny;  ++j) (*vram)[SCREEN_WIDTH*(y+top-j)+x+i] = bg_current;
+			for(;    j<=maxy; ++j) (*vram)[SCREEN_WIDTH*(y+top-j)+x+i] = colortable_current; /* [top-j]; */
+			for(;    j<top;   ++j) (*vram)[SCREEN_WIDTH*(y+top-j)+x+i] = bg_current;
 
 			pos += step;
 		}
@@ -543,7 +547,9 @@ void SampleDisplay::draw(void)
 
 		for(s32 i=1; i<s32(width-1); ++i)
 		{
-			u16 *colortable_current = (selection_exists && i >= selleft && i < selright) ? colortable_selected : colortable;
+			bool draw_selection_here = (draw_selection && i >= selleft && i < selright);
+			u16 colortable_current = draw_selection_here ? theme->col_smp_waveform_sel : theme->col_smp_waveform;
+			u16 bg_current = draw_selection_here ? theme->col_smp_bg_sel : theme->col_smp_bg;
 			data = &(base[f32toint(pos)]);
 
 			s8 maxsmp = -127, minsmp = 127;
@@ -562,12 +568,20 @@ void SampleDisplay::draw(void)
 				if(lastmax < miny) miny = lastmax;
 			}
 
-			for(s16 j=miny; j<=maxy; ++j) (*vram)[SCREEN_WIDTH*(y+middle-j)+x+i] = colortable_current[middle-j];
-
 			lastmax = maxy;
 			lastmin = miny;
 
-			*(*vram+SCREEN_WIDTH*(y+middle)+x+i) = colortable_current[middle];
+			miny += middle;
+			maxy += middle;
+			if (miny > maxy) {
+				miny = middle;
+				maxy = middle;
+			}
+
+			s16 j;
+			for(j=0; j<miny;  ++j) (*vram)[SCREEN_WIDTH*(y+top-j)+x+i] = bg_current;
+			for(;    j<=maxy; ++j) (*vram)[SCREEN_WIDTH*(y+top-j)+x+i] = colortable_current; /* [top-j]; */
+			for(;    j<top;   ++j) (*vram)[SCREEN_WIDTH*(y+top-j)+x+i] = bg_current;
 
 			pos += step;
 		}
