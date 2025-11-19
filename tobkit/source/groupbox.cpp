@@ -32,7 +32,7 @@ GroupBox::GroupBox(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, bool _visib
 GroupBox::~GroupBox()
 {
 	if (this->text != NULL)
-		free(this->text);
+		ntxm_free(this->text);
 }
 
 void GroupBox::pleaseDraw(void)
@@ -44,8 +44,8 @@ void GroupBox::pleaseDraw(void)
 void GroupBox::setText(const char *text)
 {
 	if (this->text != NULL)
-		free(this->text);
-	this->text = strdup(text);
+		ntxm_free(this->text);
+	this->text = ntxm_cstrdup(text);
 	pleaseDraw();
 }
 

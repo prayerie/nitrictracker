@@ -42,14 +42,14 @@ EnvelopeEditor::EnvelopeEditor(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram,
 	max_points(_max_points), active_point(0), sustain(false), sustain_point_index(0), zoom_level(0), buttonstate(0), scrollthingypos(0),
 	scrollthingyheight(width-2*SCROLLBUTTON_HEIGHT+2), pen_x_on_scrollthingy(0), scrollpos(0), draw_mode(false)
 {
-	points_x = (u16*)calloc(1, _max_points * sizeof(u16));
-	points_y = (u16*)calloc(1, _max_points * sizeof(u16));
+	points_x = (u16*)ntxm_ccalloc(1, _max_points * sizeof(u16));
+	points_y = (u16*)ntxm_ccalloc(1, _max_points * sizeof(u16));
 }
 
 EnvelopeEditor::~EnvelopeEditor(void)
 {
-	free(points_x);
-	free(points_y);
+	ntxm_free(points_x);
+	ntxm_free(points_y);
 }
 
 // Event calls

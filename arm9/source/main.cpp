@@ -498,7 +498,7 @@ void updateSampleList(Instrument *inst)
 	else
 	{
 		Sample *sample;
-		char *str=(char*) calloc(1, SAMPLE_NAME_LENGTH + 1);
+		char *str=(char*) ntxm_ccalloc(1, SAMPLE_NAME_LENGTH + 1);
 		for(u8 i=0; i<MAX_INSTRUMENT_SAMPLES; ++i)
 		{
 			sample = inst->getSample(i);
@@ -510,7 +510,7 @@ void updateSampleList(Instrument *inst)
 				lbsamples->set(i, "");
 			}
 		}
-		free(str);
+		ntxm_free(str);
 	}
 }
 
@@ -650,7 +650,7 @@ void updateTempoAndBpm(void)
 void setSong(Song *newsong)
 {
 	song = newsong;
-	char *str = (char*) calloc(1, 256);
+	char *str = (char*) ntxm_ccalloc(1, 256);
 
 	CommandSetSong(song);
 
@@ -727,7 +727,7 @@ void setSong(Song *newsong)
 	strncpy(str, song->getName(), 255);
 	labelsongname->setCaption(str);
 
-	free(str);
+	ntxm_free(str);
 
 	drawMainScreen();
 }
@@ -754,13 +754,13 @@ bool loadSample(const char *filename_with_path)
 	Instrument *inst = song->getInstrument(instidx);
 	if(inst == 0)
 	{
-		char *instname = (char*)malloc(MAX_INST_NAME_LENGTH+1);
+		char *instname = (char*)ntxm_cmalloc(MAX_INST_NAME_LENGTH+1);
 		strncpy(instname, filename, MAX_INST_NAME_LENGTH);
 
 		inst = new Instrument(instname);
 		song->setInstrument(instidx, inst);
 
-		free(instname);
+		ntxm_free(instname);
 
 		lbinstruments->set(state->instrument, song->getInstrument(state->instrument)->getName());
 	}
@@ -896,7 +896,7 @@ void saveFile(void)
 	char *filename = labelFilename->getCaption();
 
 	// Create a .tmp file first, so the original file is not corrupted in the case of a crash
-	char *filename_tmp = (char*) malloc(strlen(filename) + 5);
+	char *filename_tmp = (char*) ntxm_cmalloc(strlen(filename) + 5);
 	strcpy(filename_tmp, filename);
 	strcat(filename_tmp, ".tmp");
 
@@ -936,7 +936,7 @@ void saveFile(void)
 		unlink(filename);
 		rename(filename_tmp, filename);
 	}
-	free(filename_tmp);
+	ntxm_free(filename_tmp);
 
 	deleteMessageBox();
 	updateFilesystemState(true);
@@ -1047,21 +1047,21 @@ void handleTypewriterFilenameOk(void)
 		if( (rbsong->getActive() == true) && (strcasecmp(text+textlen-3, ".xm") != 0) )
 		{
 			// Append extension
-			name = (char*)malloc(textlen+3+1);
+			name = (char*)ntxm_cmalloc(textlen+3+1);
 			strcpy(name,text);
 			strcpy(name+textlen,".xm");
 		}
 		else if( (rbsample->getActive() == true) && (strcasecmp(text+textlen-4, ".wav") != 0) )
 		{
 			// Append extension
-			name = (char*)malloc(textlen+4+1);
+			name = (char*)ntxm_cmalloc(textlen+4+1);
 			strcpy(name,text);
 			strcpy(name+textlen,".wav");
 		}
 		else
 		{
 			// Leave as is
-			name = (char*)malloc(textlen+1);
+			name = (char*)ntxm_cmalloc(textlen+1);
 			strcpy(name,text);
 		}
 		labelFilename->setCaption(name);
@@ -1077,7 +1077,7 @@ void handleTypewriterFilenameOk(void)
 		}
 	}
 	deleteTypewriter();
-	if (name != NULL) free(name);
+	if (name != NULL) ntxm_free(name);
 }
 
 
@@ -2182,14 +2182,14 @@ void handleRecordSampleCancel(void)
 void handleRecordSample(void)
 {
 	// Check RAM first!
-	void *testbuf = malloc(RECORDBOX_SOUNDDATA_SIZE * 2);
+	void *testbuf = ntxm_cmalloc(RECORDBOX_SOUNDDATA_SIZE * 2);
 	if(testbuf == 0)
 	{
 		showMessage("not enough ram free!", true);
 		return;
 	}
 
-	free(testbuf);
+	ntxm_free(testbuf);
 
 	// Turn on the mic
 	CommandMicOn();
@@ -3835,7 +3835,7 @@ void fadeIn(void)
 void saveScreenshot(void)
 {
 	debugprintf("Saving screenshot\n");
-	u8 *screenbuf = (u8*)malloc(256*192*3*2);
+	u8 *screenbuf = (u8*)ntxm_cmalloc(256*192*3*2);
 	u8 *screenptr = screenbuf;
 
 	u16 col;
@@ -3865,7 +3865,7 @@ void saveScreenshot(void)
 	fwrite(screenbuf, 256*192*3*2, 1, fileh);
 	fclose(fileh);
 
-	free(screenbuf);
+	ntxm_free(screenbuf);
 	debugprintf("saved\n");
 
 	filenr++;
@@ -4007,12 +4007,12 @@ int main(int argc, char **argv) {
 		char *path_split = strrchr(argv[0], '/');
 		if (path_split != NULL && (path_split - argv[0]) >= 1) {
 			int launch_path_len = path_split - argv[0];
-			launch_path = (char*) malloc(launch_path_len + 1);
+			launch_path = (char*) ntxm_cmalloc(launch_path_len + 1);
 			strncpy(launch_path, argv[0], launch_path_len);
 			launch_path[launch_path_len] = '\0';
 
 			if (!dirExists(launch_path)) {
-				free(launch_path);
+				ntxm_free(launch_path);
 				launch_path = NULL;
 			}
 		}
@@ -4077,7 +4077,7 @@ int main(int argc, char **argv) {
 		cothread_yield_irq(IRQ_VBLANK);
 	}
 
-	if (launch_path) free(launch_path);
+	if (launch_path) ntxm_free(launch_path);
 
 	return 0;
 }

@@ -35,7 +35,7 @@ Label::Label(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _has_bord
 
 Label::~Label(void)
 {
-	if (caption) free(caption);
+	if (caption) ntxm_free(caption);
 }
 
 // Callback registration
@@ -60,9 +60,9 @@ void Label::penDown(u8 x, u8 y)
 
 void Label::setCaption(const char *_caption)
 {
-	if (caption) free(caption);
+	if (caption) ntxm_free(caption);
 
-	caption = (char*)malloc(strlen(_caption)+1);
+	caption = (char*)ntxm_cmalloc(strlen(_caption)+1);
 	strcpy(caption, _caption);
 
 	draw();

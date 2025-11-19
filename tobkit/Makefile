@@ -27,7 +27,7 @@ DEFINES		:= -DTOBKIT_PLATFORM_NDS
 # Libraries
 # ---------
 
-LIBDIRS		:= $(BLOCKSDS)/libs/libnds
+LIBDIRS		:= $(BLOCKSDS)/libs/libnds ../libntxm/libntxm
 
 # Build artifacts
 # ---------------
