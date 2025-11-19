@@ -135,9 +135,7 @@ void SampleDisplay::penUp(u8 px, u8 py)
 			s32 oldstart = smp->getLoopStart();
 			s32 zerocrossing = find_zero_crossing_near(smp->getLoopStart());
 			if(zerocrossing != -1) {
-				smp->setLoopLength(smp->getLoopLength() - (zerocrossing - oldstart));
-				smp->setLoopStart(zerocrossing);
-				DC_FlushAll();
+				smp->setLoopStartAndLength(zerocrossing, smp->getLoopLength() - (zerocrossing - oldstart));
 				draw();
 			}
 		}
@@ -145,8 +143,13 @@ void SampleDisplay::penUp(u8 px, u8 py)
 		if(snap_to_zero_crossings) {
 			s32 zerocrossing = find_zero_crossing_near(smp->getLoopStart() + smp->getLoopLength());
 			if(zerocrossing != -1) {
-				smp->setLoopLength( zerocrossing - smp->getLoopStart() );
-				DC_FlushAll();
+				s32 newlength = zerocrossing - smp->getLoopStart();
+				u32 newstart = smp->getLoopStart();
+				if(newlength < 0) {
+					newstart += newlength;
+					newlength = 0;
+				}
+				smp->setLoopStartAndLength(newstart, newlength);
 				draw();
 			}
 		}
@@ -165,17 +168,15 @@ void SampleDisplay::penMove(u8 px, u8 py)
 		s32 olstart = smp->getLoopStart();
 		s32 newstart = pixelToSample((s32)px-(s32)x-1-(s32)loop_touch_offset);
 		smp->setLoopStartAndLength(newstart, std::max((s32)0, (s32)smp->getLoopLength() - (newstart - olstart)));
-		DC_FlushAll();
 	}
 	else if(pen_on_loop_end_point) {
 		s32 newlength = (s32)pixelToSample((s32)px-(s32)x-1-(s32)loop_touch_offset) - smp->getLoopStart();
+		u32 newstart = smp->getLoopStart();
 		if(newlength < 0) {
-			u32 newstart = smp->getLoopStart() + newlength;
-			smp->setLoopStart(newstart);
+			newstart += newlength;
 			newlength = 0;
 		}
-		smp->setLoopLength(newlength);
-		DC_FlushAll();
+		smp->setLoopStartAndLength(newstart, newlength);
 	}
 	else if(pen_on_scrollthingy)
 	{
