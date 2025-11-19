@@ -179,7 +179,7 @@ void SampleDisplay::penMove(u8 px, u8 py)
 	}
 	else if(pen_on_scrollthingy)
 	{
-		scrollthingypos = my_clamp(px - x - pen_x_on_scrollthingy - SCROLLBUTTON_HEIGHT, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingywidth);
+		scrollthingypos = ntxm_clamp(px - x - pen_x_on_scrollthingy - SCROLLBUTTON_HEIGHT, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingywidth);
 
 		u32 window_width = width - 2;
 		u32 disp_width = window_width << zoom_level;
@@ -199,8 +199,8 @@ void SampleDisplay::penMove(u8 px, u8 py)
 			if(selstart != selend)
 				selection_exists = true;
 		} else if(draw_mode) {
-			int draw_x = my_clamp(px - x - 1, 0, width-2);
-			int draw_y = my_clamp(py - y - 1, 0, DRAW_HEIGHT-1);
+			int draw_x = ntxm_clamp(px - x - 1, 0, width-2);
+			int draw_y = ntxm_clamp(py - y - 1, 0, DRAW_HEIGHT-1);
 
 			u32 sx1 = pixelToSample(draw_last_x);
 			u32 sx2 = pixelToSample(draw_x);
@@ -706,7 +706,7 @@ void SampleDisplay::scroll(u32 newscrollpos)
 	u64 disp_width = (u64)window_width << zoom_level;
 	u32 scroll_width = width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingywidth;
 
-	scrollpos = my_clamp(newscrollpos, 0, disp_width - window_width);
+	scrollpos = ntxm_clamp(newscrollpos, 0, disp_width - window_width);
 	scrollthingypos = scrollpos * scroll_width / (disp_width - window_width);
 
 	calcScrollThingy();
@@ -743,9 +743,9 @@ void SampleDisplay::zoomOut(void)
 
 	/*
 	zoom_level--;
-	scrollthingypos = my_clamp(scrollthingypos - scrollthingywidth / 2, 0, width - 2*SCROLLBUTTON_HEIGHT);
+	scrollthingypos = ntxm_clamp(scrollthingypos - scrollthingywidth / 2, 0, width - 2*SCROLLBUTTON_HEIGHT);
 	calcScrollThingy();
-	scrollthingypos = my_clamp(scrollthingypos, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingywidth);
+	scrollthingypos = ntxm_clamp(scrollthingypos, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingywidth);
 
 	scrollpos = scrollthingypos;
 	for(u8 i=0; i < zoom_level; ++i) scrollpos *= 2;

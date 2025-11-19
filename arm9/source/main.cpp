@@ -983,7 +983,7 @@ void handleSave(void)
 	chdir(fileselector->getDir().c_str());
 
 	// Check if file already exists
-	if(my_file_exists(filename))
+	if(ntxm_isFileExists(filename))
 	{
 		mb = new MessageBox(&sub_vram, "overwrite file", 2, "yes", mbOverwrite, "no", deleteMessageBox);
 		gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
@@ -2434,7 +2434,7 @@ void handlePaste(void)
 		u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
 
 		if (rows_over > 0 || cols_over > 0) {
-			my_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
+			ntxm_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
 
 			u8 new_height = clipboard->height() - rows_over;
 			u8 new_width = clipboard->width() - cols_over;
