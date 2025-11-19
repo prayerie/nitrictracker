@@ -2591,20 +2591,13 @@ void sample_crop_selection(void)
 
 	u32 startsample, endsample;
 	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
-	if(sel_exists==false) return;
 
+	if(!sel_exists || startsample == endsample) return;
 
-	if (startsample == endsample) return;
-	smp->delPart(1, startsample);
-
-	if (smp->getNSamples() + 1 <= endsample - startsample)
-		return;
-
-
-	smp->delPart(endsample - startsample, smp->getNSamples() - 1);
+	if (endsample < smp->getNSamples()) smp->delPart(endsample, smp->getNSamples() - 1);
+	if (startsample > 0) smp->delPart(0, startsample - 1);
 
 	DC_FlushAll();
-
 	sampledisplay->setSample(smp);
 }
 
