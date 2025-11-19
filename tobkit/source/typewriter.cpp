@@ -77,7 +77,7 @@ Typewriter::Typewriter(const char *_msg, u16 *_char_base,
 	*_trans_reg_x = -kx;
 	*_trans_reg_y = -ky;
 	
-	text = (char*)calloc(1, MAX_TEXT_LEN+1);
+	text = (char*)ntxm_ccalloc(1, MAX_TEXT_LEN+1);
 }
 
 Typewriter::~Typewriter(void)
@@ -86,7 +86,7 @@ Typewriter::~Typewriter(void)
 	delete msglabel;
 	delete buttonok;
 	delete buttoncancel;
-	free(text);
+	ntxm_free(text);
 	
 	for(int py=0; py<TW_TILE_HEIGHT; ++py) {
 		memset(map_base + 32*py, 0, TW_TILE_WIDTH*2);

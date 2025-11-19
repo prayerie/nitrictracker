@@ -34,7 +34,7 @@ ToggleButton::ToggleButton(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, boo
 ToggleButton::~ToggleButton()
 {
 	if (this->caption != NULL)
-		free(this->caption);
+		ntxm_free(this->caption);
 }
 
 // Callback registration
@@ -76,9 +76,9 @@ void ToggleButton::buttonPress(u16 button)
 void ToggleButton::setCaption(const char *_caption)
 {
 	if (this->caption != NULL)
-		free(this->caption);
+		ntxm_free(this->caption);
 
-	this->caption = strdup(_caption);
+	this->caption = ntxm_cstrdup(_caption);
 }
 
 void ToggleButton::setBitmap(const u8 *_bmp, int _width, int _height)

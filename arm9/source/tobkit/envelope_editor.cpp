@@ -42,14 +42,14 @@ EnvelopeEditor::EnvelopeEditor(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram,
 	max_points(_max_points), active_point(0), sustain(false), sustain_point_index(0), zoom_level(0), buttonstate(0), scrollthingypos(0),
 	scrollthingyheight(width-2*SCROLLBUTTON_HEIGHT+2), pen_x_on_scrollthingy(0), scrollpos(0), draw_mode(false)
 {
-	points_x = (u16*)calloc(1, _max_points * sizeof(u16));
-	points_y = (u16*)calloc(1, _max_points * sizeof(u16));
+	points_x = (u16*)ntxm_ccalloc(1, _max_points * sizeof(u16));
+	points_y = (u16*)ntxm_ccalloc(1, _max_points * sizeof(u16));
 }
 
 EnvelopeEditor::~EnvelopeEditor(void)
 {
-	free(points_x);
-	free(points_y);
+	ntxm_free(points_x);
+	ntxm_free(points_y);
 }
 
 // Event calls
@@ -115,8 +115,8 @@ void EnvelopeEditor::penDown(u8 px, u8 py)
 	else
 	{
 		// Draw mode
-		penY = my_clamp(penY, MIN_Y, MAX_Y);
-		penX = my_clamp(penX, MIN_X, MAX_X);
+		penY = ntxm_clamp(penY, MIN_Y, MAX_Y);
+		penX = ntxm_clamp(penX, MIN_X, MAX_X);
 
 		s16 realX, realY;
 		dispToReal(penX, penY, &realX, &realY);
@@ -179,8 +179,8 @@ void EnvelopeEditor::penMove(u8 px, u8 py)
 		{
 			s16 pointX, pointY;
 
-			penY = my_clamp(penY, MIN_Y, MAX_Y);
-			penX = my_clamp(penX, MIN_X, MAX_X);
+			penY = ntxm_clamp(penY, MIN_Y, MAX_Y);
+			penX = ntxm_clamp(penX, MIN_X, MAX_X);
 
 			dispToReal(penX, penY, &pointX, &pointY);
 
@@ -189,17 +189,17 @@ void EnvelopeEditor::penMove(u8 px, u8 py)
 				&& ( pointX > points_x[active_point-1] )
 			)
 			{
-				points_x[active_point] = my_clamp(pointX, 0, points_max_x);
+				points_x[active_point] = ntxm_clamp(pointX, 0, points_max_x);
 			}
 
-			points_y[active_point] = my_clamp(pointY, 0, points_max_y);
+			points_y[active_point] = ntxm_clamp(pointY, 0, points_max_y);
 
 			if(onPointsChange != 0)
 				onPointsChange();
 		}
 		else if(buttonstate == SCROLLTHINGY)
 		{
-			scrollthingypos = my_clamp(penX - pen_x_on_scrollthingy - SCROLLBUTTON_HEIGHT, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingyheight);
+			scrollthingypos = ntxm_clamp(penX - pen_x_on_scrollthingy - SCROLLBUTTON_HEIGHT, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingyheight);
 
 			u32 window_width = width - 2;
 			u32 disp_width = window_width << zoom_level;
@@ -212,8 +212,8 @@ void EnvelopeEditor::penMove(u8 px, u8 py)
 	{
 		s16 realX, realY;
 		dispToReal(penX, penY, &realX, &realY);
-		realX = my_clamp(realX, points_x[n_points-1]+1, points_max_x);
-		realY = my_clamp(realY, 0, points_max_y);
+		realX = ntxm_clamp(realX, points_x[n_points-1]+1, points_max_x);
+		realY = ntxm_clamp(realY, 0, points_max_y);
 
 		// If there's only one point yet, check if we are FIRST_DIST points away from it
 		if(n_points == 1)
@@ -338,7 +338,7 @@ void EnvelopeEditor::addPoint(void)
 	}
 	else // Add a point after the last point
 	{
-		points_x[active_point+1] = my_clamp(points_x[active_point] + ((50) >> zoom_level), 0, points_max_x);
+		points_x[active_point+1] = ntxm_clamp(points_x[active_point] + ((50) >> zoom_level), 0, points_max_x);
 		points_y[active_point+1] = points_y[active_point];
 	}
 
@@ -416,9 +416,9 @@ void EnvelopeEditor::zoomOut(void)
 	if(zoom_level > 0)
 	{
 		zoom_level--;
-		scrollthingypos = my_clamp(scrollthingypos - scrollthingyheight / 2, 0, width - 2*SCROLLBUTTON_HEIGHT);
+		scrollthingypos = ntxm_clamp(scrollthingypos - scrollthingyheight / 2, 0, width - 2*SCROLLBUTTON_HEIGHT);
 		calcScrollThingy();
-		scrollthingypos = my_clamp(scrollthingypos, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingyheight);
+		scrollthingypos = ntxm_clamp(scrollthingypos, 0, width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingyheight);
 
 		scrollpos = scrollthingypos;
 		for(u8 i=0; i < zoom_level; ++i)
@@ -614,7 +614,7 @@ void EnvelopeEditor::scroll(s32 difference)
 	u32 disp_width = window_width << zoom_level;
 	u32 scroll_width = width - 2*SCROLLBUTTON_HEIGHT+2 - scrollthingyheight;
 
-	scrollpos = my_clamp(scrollpos + difference, 0, disp_width - window_width);
+	scrollpos = ntxm_clamp(scrollpos + difference, 0, disp_width - window_width);
 	scrollthingypos = scrollpos * scroll_width / (disp_width - window_width);
 
 	calcScrollThingy();

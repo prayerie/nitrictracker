@@ -33,7 +33,7 @@ Button::Button(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, bool _visibl
 
 Button::~Button()
 {
-	if (caption) free(caption);
+	if (caption) ntxm_free(caption);
 }
 
 void Button::registerPushCallback(void (*onPush_)(void)) {
@@ -72,8 +72,8 @@ void Button::buttonPress(u16 button) {
 }
 
 void Button::setCaption(const char *_caption) {
-	if (caption) free(caption);
-	caption = (char*)malloc(strlen(_caption)+1);
+	if (caption) ntxm_free(caption);
+	caption = (char*)ntxm_cmalloc(strlen(_caption)+1);
 	strcpy(caption, _caption);
 }
 

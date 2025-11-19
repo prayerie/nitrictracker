@@ -34,10 +34,10 @@ MessageBox::MessageBox(u16 **_vram, const char *message, u8 n_buttons, ...)
 	:Widget((SCREEN_WIDTH-MB_MIN_WIDTH)/2, (SCREEN_HEIGHT-MB_HEIGHT)/2, MB_MIN_WIDTH, MB_HEIGHT, _vram),
 	n_buttons(n_buttons)
 {
-	msg = strdup(message);
+	msg = ntxm_cstrdup(message);
 
 	// Go through the list of given captions/callback pointers and add a button for each of them
-	callbacks = (void (**)(void))malloc(sizeof(void (*)(void))*n_buttons);
+	callbacks = (void (**)(void))ntxm_cmalloc(sizeof(void (*)(void))*n_buttons);
 
 	va_list marker;
 	va_start(marker, n_buttons);
@@ -75,7 +75,7 @@ MessageBox::MessageBox(u16 **_vram, const char *message, u8 n_buttons, ...)
 	if(n_buttons > 0)
 	{
 		u8 xpos = x + 10;
-		buttons = (Button**)malloc(sizeof(Button*)*n_buttons);
+		buttons = (Button**)ntxm_cmalloc(sizeof(Button*)*n_buttons);
 		u8 buttonwidth;
 
 		va_start(marker, n_buttons);
@@ -105,15 +105,15 @@ MessageBox::MessageBox(u16 **_vram, const char *message, u8 n_buttons, ...)
 
 MessageBox::~MessageBox(void)
 {
-	free(msg);
+	ntxm_free(msg);
 
 	//delete label;
-	free(callbacks);
+	ntxm_free(callbacks);
 	for(u8 i=0; i<n_buttons; ++i) {
 		delete buttons[i];
 	}
 	if(n_buttons > 0) {
-		free(buttons);
+		ntxm_free(buttons);
 	}
 }
 

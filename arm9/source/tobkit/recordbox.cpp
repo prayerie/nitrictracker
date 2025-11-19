@@ -32,6 +32,7 @@
 #include "../tools.h"
 #include "ntxm/instrument.h"
 #include "ntxm/fifocommand.h"
+#include "ntxm/ntxmtools.h"
 
 using namespace tobkit;
 
@@ -71,7 +72,7 @@ RecordBox::RecordBox(u16 **_vram, void (*_onOk)(void), void (*_onCancel)(void), 
 RecordBox::~RecordBox(void)
 {
 	if(sound_data)
-		free(sound_data);
+		ntxm_free(sound_data);
 
 	delete labelmsg;
 	delete labelmsg2;
@@ -191,8 +192,8 @@ void RecordBox::startRecording(void)
 			instrument->setSample(smpidx, NULL); // Deletes the sample
 
 		if(sound_data)
-			free(sound_data);
-		sound_data = (u16*)malloc(RECORDBOX_SOUNDDATA_SIZE);
+			ntxm_free(sound_data);
+		sound_data = (u16*)ntxm_cmalloc(RECORDBOX_SOUNDDATA_SIZE);
 		if(!sound_data)
 			return;
 
@@ -216,7 +217,7 @@ void RecordBox::stopRecording()
 	if(size < RECORDBOX_CROP_SAMPLES_END + RECORDBOX_CROP_SAMPLES_START)
 	{
 		if(sound_data)
-			free(sound_data);
+			ntxm_free(sound_data);
 		sound_data = NULL;
 		sample = NULL;
 		onCancel();
@@ -226,7 +227,7 @@ void RecordBox::stopRecording()
 	
 	// Get pointer to sound data and shrink it beautiful
 	u32 newsize = size - RECORDBOX_CROP_SAMPLES_END*2; // Crop the end because it contains the clicking of the button
-	sound_data = (u16*)realloc(sound_data, newsize);
+	sound_data = (u16*)ntxm_crealloc(sound_data, newsize);
 	
 	//Cut the first few samples
 	if(RECORDBOX_CROP_SAMPLES_START < newsize)
@@ -234,7 +235,7 @@ void RecordBox::stopRecording()
 		memmove(sound_data, sound_data+RECORDBOX_CROP_SAMPLES_START*2,
 			  newsize-RECORDBOX_CROP_SAMPLES_START*2);
 		newsize -= RECORDBOX_CROP_SAMPLES_START*2;
-		sound_data = (u16*)realloc(sound_data, newsize);
+		sound_data = (u16*)ntxm_crealloc(sound_data, newsize);
 	}
 	
 	// takes ownership of sound_data

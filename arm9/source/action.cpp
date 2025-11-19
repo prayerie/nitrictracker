@@ -238,14 +238,13 @@ void ActionBuffer::clear_at(int i)
 ActionBuffer::ActionBuffer(int size)
     :on_change([]{}), action_size(size)
 {
-    actions = (Action**) malloc(sizeof(Action*) * action_size);
-    memset(actions, 0, sizeof(Action*) * action_size);
+    actions = (Action**) ntxm_ccalloc(sizeof(Action*), action_size);
     clear();
 }
 
 ActionBuffer::~ActionBuffer()
 {
-    if (actions != NULL) free(actions);
+    if (actions != NULL) ntxm_free(actions);
 }
 
 bool ActionBuffer::valid()

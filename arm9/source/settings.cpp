@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "tools.h"
+#include "ntxm/ntxmtools.h"
 
 #define SETTINGS_DEFAULT_DATA_DIR "/data/NitroTracker"
 #define SETTINGS_CONFIG_FILENAME "NitroTracker.conf"
@@ -78,7 +79,7 @@ fat(use_fat), changed(false)
 			u32 conf_filesize = ftell(conf);
 			fseek(conf, 0, SEEK_SET);
 
-			char *confstr = (char*)calloc(1, conf_filesize+1);
+			char *confstr = (char*)ntxm_ccalloc(1, conf_filesize+1);
 			fread(confstr, conf_filesize, 1, conf);
 			fclose(conf);
 
@@ -102,7 +103,7 @@ fat(use_fat), changed(false)
 			if (!lines_per_beat || lines_per_beat > 64)
 				lines_per_beat = 8;
 			
-			free(confstr);
+			ntxm_free(confstr);
 		}
 	}
 
