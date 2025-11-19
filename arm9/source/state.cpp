@@ -25,17 +25,18 @@
 #include "state.h"
 
 #include <stdlib.h>
+#include "ntxm/ntxmtools.h"
 
 State::State(void) {
-	song_filename = (char*) malloc(STATE_FILENAME_LEN + 1);
-	sample_filename = (char*) malloc(STATE_FILENAME_LEN + 1);
+	song_filename = (char*) ntxm_cmalloc(STATE_FILENAME_LEN + 1);
+	sample_filename = (char*) ntxm_cmalloc(STATE_FILENAME_LEN + 1);
 
 	reset();
 }
 
 State::~State(void) {
-	free(song_filename);
-	free(sample_filename);
+	ntxm_free(song_filename);
+	ntxm_free(sample_filename);
 }
 
 void State::reset(void)

@@ -11,7 +11,7 @@ CellArray::CellArray(int width_, int height_)
     sassert(array_width > 0, "invalid width: %d (expected > 0)", array_width);
     sassert(array_height > 0, "invalid height: %d (expected > 0)", array_height);
 
-    array = (Cell*) malloc(sizeof(Cell) * array_width * array_height);
+    array = (Cell*) ntxm_ccalloc(sizeof(Cell), array_width * array_height);
 }
 
 CellArray::CellArray(Cell** ptn, int x1, int y1, int x2, int y2)
@@ -23,7 +23,7 @@ CellArray::CellArray(Cell** ptn, int x1, int y1, int x2, int y2)
 
 CellArray::~CellArray()
 {
-    if (array != NULL) free(array);
+    if (array != NULL) ntxm_free(array);
 }
 
 bool CellArray::valid()

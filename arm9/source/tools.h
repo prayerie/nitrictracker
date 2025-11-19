@@ -29,14 +29,10 @@
 #include <stdio.h>
 #include <nds.h>
 #include <algorithm>
+#include "ntxm/ntxmtools.h"
 
 // A collection of utilities for everyday DS coding
-
-#ifdef DEBUG
-#define debugprintf printf
-#else
-static inline void debugprintf(...) {}
-#endif
+#define debugprintf ntxm_dprintf
 
 #define ceil_f32toint(n) (((n) + ((1 << 12) - 1)) >> 12)
 
