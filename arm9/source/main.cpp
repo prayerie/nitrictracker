@@ -257,13 +257,17 @@ u8 dsmw_lastchannels[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 char last_themepath[SETTINGS_FILENAME_LEN + 1];
 
 bool fastscroll = false;
-
+bool multisamp_from_mapsamp = false;
 uint16* map;
 
 // TODO: Make own class for tracker control and remove forward declarations
 void handleButtons(u16 buttons, u16 buttonsheld);
 void HandleTick(void);
 void handlePotPosChangeFromSong(u16 newpotpos);
+void sampleChange(Sample *smp);
+void handleSampleChange(u16 sample);
+void handleToggleMapSamples(bool on);
+void setMultisamplesEnabled(bool show);
 void drawMainScreen(void);
 void redrawSubScreen(void);
 void showMessage(const char *msg, bool error);
@@ -417,6 +421,24 @@ void handleNoteFill(u8 note, bool while_playing)
     }
 }
 
+// swap the sample display if the key has another
+// sample mapped
+void onKeypress(u8 note)
+{
+	Instrument *inst = song->getInstrument(state->instrument);
+	if (inst==0) return;
+	
+	u16 newsamp = inst->getNoteSample(note + state->basenote);
+
+	handleSampleChange(newsamp);
+	lbsamples->select(newsamp);
+}
+
+void onKeyrelease(void)
+{
+	// stop cursor
+}
+
 void handleNoteStroke(u8 note)
 {
 	if (note == EMPTY_NOTE || note == STOP_NOTE) return;
@@ -447,6 +469,9 @@ void handleNoteStroke(u8 note)
 		label = (sample_id >= 0xA) ? (sample_id - 0xA + 'a') : (sample_id + '0');
 		kb->setKeyLabel(note, label);
 	}
+	
+	// after pr153 merge: also add this to handlePianoPakStroke
+	onKeypress(note); 
 
 	// Play the note
 	// Send "play inst" command
@@ -477,6 +502,8 @@ void handleNoteRelease(u8 note, bool moved)
 		redraw_main_requested = true;
 	}
 
+	// after pr153 merge: also add this to handlePianoPakRelease
+	onKeyrelease();
 	CommandStopInst(255);
 
 #ifdef MIDI
@@ -531,6 +558,23 @@ void updateFilesystemState(bool draw)
 
 void sampleChange(Sample *smp)
 {
+	rbloop_none->set_enabled(smp != NULL);
+	rbloop_forward->set_enabled(smp != NULL);
+	rbloop_pingpong->set_enabled(smp != NULL);
+	nssamplevolume->set_enabled(smp != NULL);
+	nspanning->set_enabled(smp != NULL);
+	nsrelnote->set_enabled(smp != NULL);
+	nsfinetune->set_enabled(smp != NULL);
+	buttonsmpfadein->set_enabled(smp != NULL);
+	buttonsmpfadeout->set_enabled(smp != NULL);
+	buttonsmpselall->set_enabled(smp != NULL);
+	buttonsmpselnone->set_enabled(smp != NULL);
+	buttonsmpseldel->set_enabled(smp != NULL);
+	buttonsmpreverse->set_enabled(smp != NULL);
+	buttonsmpnormalize->set_enabled(smp != NULL);
+	cbsnapto0xing->set_enabled(smp != NULL);
+	buttonsmpdraw->set_enabled(smp != NULL);
+
 	if(smp == NULL)
 	{
 		sampledisplay->setSample(NULL);
@@ -589,6 +633,12 @@ void volEnvSetInst(Instrument *inst)
 	btnenvdrawmode->set_enabled(inst != NULL);
 	btnaddenvpoint->set_enabled(inst != NULL);
 	btndelenvpoint->set_enabled(inst != NULL);
+	btnenvzoomin->set_enabled(inst != NULL);
+	btnenvzoomout->set_enabled(inst != NULL);
+	btnenvsetsuspoint->set_enabled(inst != NULL);
+	cbvolenvenabled->set_enabled(inst != NULL);
+	cbsusenabled->set_enabled(inst != NULL);
+	tbmapsamples->set_enabled(inst != NULL);
 	volenvedit->pleaseDraw();
 }
 
@@ -622,6 +672,7 @@ void handleInstChange(u16 newinst)
 	}
 	else
 	{
+		state->sample = 0;
 		sampleChange(NULL);
 		return;
 	}
@@ -763,6 +814,7 @@ bool loadSample(const char *filename_with_path)
 		ntxm_free(instname);
 
 		lbinstruments->set(state->instrument, song->getInstrument(state->instrument)->getName());
+		handleInstChange(instidx);
 	}
 
 	//
@@ -2096,25 +2148,14 @@ void handleToggleScrollLock(bool on)
 
 void handleToggleMultiSample(bool on)
 {
-	if(on)
-	{
-		drawSampleNumbers();
-		kb->showKeyLabels();
-		tbmultisample->setCaption("-");
-		lbinstruments->resize(114, 67);
-		buttonrenamesample->show();
-		lbsamples->show();
-		tbmapsamples->show();
+	multisamp_from_mapsamp = false;
+
+	if (!on) {
+		handleToggleMapSamples(false);
+		tbmapsamples->setState(false);
 	}
-	else
-	{
-		kb->hideKeyLabels();
-		tbmultisample->setCaption("+");
-		buttonrenamesample->hide();
-		lbsamples->hide();
-		lbinstruments->resize(114, 89);
-		tbmapsamples->hide();
-	}
+		
+	setMultisamplesEnabled(on);
 }
 
 void showTypewriterForSampleRename(void)
@@ -2733,7 +2774,28 @@ void saveConfig(void)
 		showMessage("config saved!", false);
 }
 
-void toggleMapSamples(bool is_active)
+void setMultisamplesEnabled(bool show)
+{
+	if (show)
+	{
+		drawSampleNumbers();
+		kb->showKeyLabels();
+		lbinstruments->resize(114, 67);
+		lbsamples->show();
+	}
+		
+	else {
+		lbsamples->hide();
+		lbinstruments->resize(114, 89);
+		kb->hideKeyLabels();
+	}
+
+	tbmultisample->setCaption(show ? "-" : "+");
+	tbmultisample->setState(show);
+	buttonrenamesample->set_visible(show);
+}
+
+void handleToggleMapSamples(bool is_active)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
 	if(inst == NULL)
@@ -2741,11 +2803,17 @@ void toggleMapSamples(bool is_active)
 
 	if(is_active)
 	{
-		if(tbmultisample->getState() == false)
-			tbmultisample->setState(true);
+		if(tbmultisample->getState() == false) {
+			setMultisamplesEnabled(true);
+			multisamp_from_mapsamp = true;
+		}
+	} else {
+		if (multisamp_from_mapsamp)
+			setMultisamplesEnabled(false);
 	}
 
 	state->map_samples = is_active;
+	kb->setInMappingMode(is_active);
 }
 
 void toggleQueueLock(bool is_active)
@@ -3274,9 +3342,10 @@ void setupGUI(bool dldi_enabled)
     cbsusenabled->setCaption("sus on");
     cbsusenabled->registerToggleCallback(envToggleSustainEnabled);
     
-		tbmapsamples = new ToggleButton(72, 133, 134-72, 12, &sub_vram, false);
+		tbmapsamples = new ToggleButton(72, 133, 134-72, 12, &sub_vram);
 		tbmapsamples->setCaption("map samp.");
-		tbmapsamples->registerToggleCallback(toggleMapSamples);
+		tbmapsamples->registerToggleCallback(handleToggleMapSamples);
+		tbmapsamples->disable();
 
 		tabbox->registerWidget(btnaddenvpoint, 0, 3);
 		tabbox->registerWidget(btndelenvpoint, 0, 3);
@@ -3610,7 +3679,7 @@ void setupGUI(bool dldi_enabled)
 
 	gui->revealAll();
 
-
+	sampleChange(NULL); // disable samp ed buttons at first as we have no sample!
 	actionBufferChangeCallback();
 	updateTempoAndBpm();
 	handleLinesBeatChange(settings->getLinesPerBeat());
@@ -3734,6 +3803,7 @@ void VblankHandler(void)
 	u16 keysup = keysUp();
 	u16 keysheld = keysHeld();
 	touchRead(&touch);
+
 
 	if(keysdown & KEY_TOUCH)
 	{
