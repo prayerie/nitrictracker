@@ -264,7 +264,6 @@ uint16* map;
 void handleButtons(u16 buttons, u16 buttonsheld);
 void HandleTick(void);
 void handlePotPosChangeFromSong(u16 newpotpos);
-void sampleChange(Sample *smp);
 void handleSampleChange(u16 sample);
 void handleToggleMapSamples(bool on);
 void setMultisamplesEnabled(bool show);
@@ -431,7 +430,6 @@ void onKeypress(u8 note)
 	u16 newsamp = inst->getNoteSample(note + state->basenote);
 
 	handleSampleChange(newsamp);
-	lbsamples->select(newsamp);
 }
 
 void onKeyrelease(void)
@@ -453,7 +451,6 @@ void handleNoteStroke(u8 note)
 		DC_FlushAll();
 		redraw_main_requested = true; */
 	}
-
 	// If we are in sample mapping mode, map the pressed key to the selected sample for the current instrument
 	if(state->map_samples == true)
 	{
@@ -513,6 +510,8 @@ void handleNoteRelease(u8 note, bool moved)
 #endif
 }
 
+
+
 void updateSampleList(Instrument *inst)
 {
 	if(inst == NULL)
@@ -556,8 +555,11 @@ void updateFilesystemState(bool draw)
 	if(draw) fileselector->pleaseDraw();
 }
 
-void sampleChange(Sample *smp)
+void handleSampleChange(const u16 newsample)
 {
+	state->sample = newsample;
+	Instrument *inst = song->getInstrument(lbinstruments->getidx());
+	Sample *smp = inst ? inst->getSample(newsample) : NULL;
 	rbloop_none->set_enabled(smp != NULL);
 	rbloop_forward->set_enabled(smp != NULL);
 	rbloop_pingpong->set_enabled(smp != NULL);
@@ -574,6 +576,8 @@ void sampleChange(Sample *smp)
 	buttonsmpnormalize->set_enabled(smp != NULL);
 	cbsnapto0xing->set_enabled(smp != NULL);
 	buttonsmpdraw->set_enabled(smp != NULL);
+
+	lbsamples->select(newsample);
 
 	if(smp == NULL)
 	{
@@ -598,6 +602,8 @@ void sampleChange(Sample *smp)
 		rbg_sampleloop->setActive(smp->getLoop());
 	else
 		rbg_sampleloop->setActive(0);
+		
+	updateKeyLabels();
 	/*
 	printf("Selected:");
 	if(smp->is16bit()) {
@@ -612,6 +618,7 @@ void sampleChange(Sample *smp)
 	printf("length: %u\n", smp->getNSamples());
 	*/
 }
+
 
 void volEnvSetInst(Instrument *inst)
 {
@@ -642,40 +649,26 @@ void volEnvSetInst(Instrument *inst)
 	volenvedit->pleaseDraw();
 }
 
-void handleSampleChange(u16 newsample)
+void handleInstChange(const u16 newinst, const bool reset=true)
 {
-	state->sample = newsample;
-
-	Instrument *inst = song->getInstrument(lbinstruments->getidx());
-	if(inst == 0)
-		return;
-
-	Sample *smp = inst->getSample(newsample);
-	sampleChange(smp);
-}
-
-void handleInstChange(u16 newinst)
-{
-
 	state->instrument = newinst;
-
-	lbsamples->select(0);
 
 	Instrument *inst = song->getInstrument(newinst);
 	updateSampleList(inst);
 	volEnvSetInst(inst);
 	updateKeyLabels();
-	if(inst != NULL)
-	{
-		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
-		handleSampleChange(0);
-	}
+
+	if (reset)
+		handleSampleChange(0); // handles the state sample
+	else if(inst == NULL)
+		handleSampleChange(state->sample); // preserve current sample so user can load new smp into slot >0 on null inst
 	else
-	{
-		state->sample = 0;
-		sampleChange(NULL);
-		return;
-	}
+		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
+}
+
+void handleInstChangeReset(u16 newinst)
+{
+	handleInstChange(newinst, true);
 }
 
 void updateLabelSongLen(void)
@@ -743,7 +736,7 @@ void setSong(Song *newsong)
 
 	inst = song->getInstrument(0);
 	if(inst != 0)
-		sampleChange(inst->getSample(0));
+		handleSampleChange(0);
 
 	volEnvSetInst(song->getInstrument(0));
 
@@ -773,7 +766,6 @@ void setSong(Song *newsong)
 		sampledisplay->setSample(inst->getSample(state->sample));
 	}
 
-	lbsamples->select(0);
 
 	strncpy(str, song->getName(), 255);
 	labelsongname->setCaption(str);
@@ -797,8 +789,7 @@ bool loadSample(const char *filename_with_path)
 	}
 
 	u8 instidx = lbinstruments->getidx();
-	u8 smpidx = lbsamples->getidx();
-
+	u8 smpidx = state->sample;
 	//
 	// Create the instrument if it doesn't exist
 	//
@@ -814,7 +805,7 @@ bool loadSample(const char *filename_with_path)
 		ntxm_free(instname);
 
 		lbinstruments->set(state->instrument, song->getInstrument(state->instrument)->getName());
-		handleInstChange(instidx);
+		handleInstChange(instidx, false); // don't implicitly reset lbsamples to pos 0 if loading a sample!
 	}
 
 	//
@@ -831,7 +822,7 @@ bool loadSample(const char *filename_with_path)
 		lbinstruments->set(state->instrument, song->getInstrument(state->instrument)->getName());
 	}
 
-	sampleChange(newsmp);
+	handleSampleChange(smpidx);
 
 	DC_FlushAll();
 
@@ -2196,14 +2187,11 @@ void handleRecordSampleOK(void)
 	// Insert the sample into the instrument
 	inst->setSample(state->sample, smp);
 
-	lbsamples->set(state->sample, smp->getName());
-
 	volEnvSetInst(inst);
 
 	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
 
-	sampleChange(smp);
-	updateKeyLabels();
+	handleSampleChange(state->sample);
 	redrawSubScreen();
 }
 
@@ -3520,7 +3508,7 @@ void setupGUI(bool dldi_enabled)
 	numberboxadd->registerChangeCallback(changeAdd);
 	numberboxoctave->registerChangeCallback(changeOctave);
 
-	lbinstruments->registerChangeCallback(handleInstChange);
+	lbinstruments->registerChangeCallback(handleInstChangeReset);
 	lbsamples->registerChangeCallback(handleSampleChange);
 
 	buttoninsnote2->setCaption("ins");
@@ -3679,7 +3667,7 @@ void setupGUI(bool dldi_enabled)
 
 	gui->revealAll();
 
-	sampleChange(NULL); // disable samp ed buttons at first as we have no sample!
+	handleSampleChange(0); // disable samp ed buttons at first as we have no sample!
 	actionBufferChangeCallback();
 	updateTempoAndBpm();
 	handleLinesBeatChange(settings->getLinesPerBeat());
@@ -4089,7 +4077,6 @@ int main(int argc, char **argv) {
 	}
 
 	last_themepath[SETTINGS_FILENAME_LEN] = '\0';
-
 	state = new State();
 	
 	clearMainScreen();
