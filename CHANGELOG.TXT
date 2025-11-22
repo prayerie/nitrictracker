@@ -1,3 +1,35 @@
+-- NitrousTracker v0.5.1 (2025-11-22)
+
+New features:
+
+- additional themes! (oxygenfad, prayerie)
+- support for the piano in interface theming (prayerie)
+
+Improvements:
+
+- improved button disabling depending on state (prayerie)
+- reduced flicker when adjusting sample loop points
+- the currently displayed/selected sample is now switched based on
+  the multisample note just played (prayerie)
+- the piano is now outlined when in mapping mode (prayerie)
+- when out of memory, the tracker will now "fail fast" instead of
+  causing potential unwanted memory corruption and leading to
+  unpredictable errors
+
+Fixes:
+
+- fixed a slight inconsistency regarding the current sample when clicking
+  on a new instrument which should reset it to 0, but only did so
+  visually (prayerie)
+- fixed drawing mapping labels when in mapping mode but after disabling
+  the sample listbox (prayerie)
+- fixed memory corruption issues involving ping-pong loop samples
+- fixed minor theme color calculation bugs (prayerie)
+- fixed piano not respecting volume envelope (prayerie)
+- fixed strange behaviour when mapping a key to a null sample then
+  playing that after playing a non-null one (prayerie)
+- fixed tabbox rounding disappearing after selecting a tab (prayerie)
+
 -- NitrousTracker v0.5.0 (2025-11-11)
 
 New features:
