@@ -257,13 +257,16 @@ u8 dsmw_lastchannels[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 char last_themepath[SETTINGS_FILENAME_LEN + 1];
 
 bool fastscroll = false;
-
+bool multisamp_from_mapsamp = false;
 uint16* map;
 
 // TODO: Make own class for tracker control and remove forward declarations
 void handleButtons(u16 buttons, u16 buttonsheld);
 void HandleTick(void);
 void handlePotPosChangeFromSong(u16 newpotpos);
+void handleSampleChange(u16 sample);
+void handleToggleMapSamples(bool on);
+void setMultisamplesEnabled(bool show);
 void drawMainScreen(void);
 void redrawSubScreen(void);
 void showMessage(const char *msg, bool error);
@@ -417,6 +420,23 @@ void handleNoteFill(u8 note, bool while_playing)
     }
 }
 
+// swap the sample display if the key has another
+// sample mapped
+void onKeypress(u8 note)
+{
+	Instrument *inst = song->getInstrument(state->instrument);
+	if (inst==0) return;
+	
+	u16 newsamp = inst->getNoteSample(note + state->basenote);
+
+	handleSampleChange(newsamp);
+}
+
+void onKeyrelease(void)
+{
+	// stop cursor
+}
+
 void handleNoteStroke(u8 note)
 {
 	if (note == EMPTY_NOTE || note == STOP_NOTE) return;
@@ -431,7 +451,6 @@ void handleNoteStroke(u8 note)
 		DC_FlushAll();
 		redraw_main_requested = true; */
 	}
-
 	// If we are in sample mapping mode, map the pressed key to the selected sample for the current instrument
 	if(state->map_samples == true)
 	{
@@ -447,6 +466,9 @@ void handleNoteStroke(u8 note)
 		label = (sample_id >= 0xA) ? (sample_id - 0xA + 'a') : (sample_id + '0');
 		kb->setKeyLabel(note, label);
 	}
+	
+	// after pr153 merge: also add this to handlePianoPakStroke
+	onKeypress(note); 
 
 	// Play the note
 	// Send "play inst" command
@@ -477,6 +499,8 @@ void handleNoteRelease(u8 note, bool moved)
 		redraw_main_requested = true;
 	}
 
+	// after pr153 merge: also add this to handlePianoPakRelease
+	onKeyrelease();
 	CommandStopInst(255);
 
 #ifdef MIDI
@@ -485,6 +509,8 @@ void handleNoteRelease(u8 note, bool moved)
 		dsmi_write(NOTE_OFF | midichannel, state->basenote + note, 127);
 #endif
 }
+
+
 
 void updateSampleList(Instrument *inst)
 {
@@ -529,8 +555,30 @@ void updateFilesystemState(bool draw)
 	if(draw) fileselector->pleaseDraw();
 }
 
-void sampleChange(Sample *smp)
+void handleSampleChange(const u16 newsample)
 {
+	state->sample = newsample;
+	Instrument *inst = song->getInstrument(lbinstruments->getidx());
+	Sample *smp = inst ? inst->getSample(newsample) : NULL;
+	rbloop_none->set_enabled(smp != NULL);
+	rbloop_forward->set_enabled(smp != NULL);
+	rbloop_pingpong->set_enabled(smp != NULL);
+	nssamplevolume->set_enabled(smp != NULL);
+	nspanning->set_enabled(smp != NULL);
+	nsrelnote->set_enabled(smp != NULL);
+	nsfinetune->set_enabled(smp != NULL);
+	buttonsmpfadein->set_enabled(smp != NULL);
+	buttonsmpfadeout->set_enabled(smp != NULL);
+	buttonsmpselall->set_enabled(smp != NULL);
+	buttonsmpselnone->set_enabled(smp != NULL);
+	buttonsmpseldel->set_enabled(smp != NULL);
+	buttonsmpreverse->set_enabled(smp != NULL);
+	buttonsmpnormalize->set_enabled(smp != NULL);
+	cbsnapto0xing->set_enabled(smp != NULL);
+	buttonsmpdraw->set_enabled(smp != NULL);
+
+	lbsamples->select(newsample);
+
 	if(smp == NULL)
 	{
 		sampledisplay->setSample(NULL);
@@ -554,6 +602,8 @@ void sampleChange(Sample *smp)
 		rbg_sampleloop->setActive(smp->getLoop());
 	else
 		rbg_sampleloop->setActive(0);
+		
+	updateKeyLabels();
 	/*
 	printf("Selected:");
 	if(smp->is16bit()) {
@@ -568,6 +618,7 @@ void sampleChange(Sample *smp)
 	printf("length: %u\n", smp->getNSamples());
 	*/
 }
+
 
 void volEnvSetInst(Instrument *inst)
 {
@@ -589,42 +640,35 @@ void volEnvSetInst(Instrument *inst)
 	btnenvdrawmode->set_enabled(inst != NULL);
 	btnaddenvpoint->set_enabled(inst != NULL);
 	btndelenvpoint->set_enabled(inst != NULL);
+	btnenvzoomin->set_enabled(inst != NULL);
+	btnenvzoomout->set_enabled(inst != NULL);
+	btnenvsetsuspoint->set_enabled(inst != NULL);
+	cbvolenvenabled->set_enabled(inst != NULL);
+	cbsusenabled->set_enabled(inst != NULL);
+	tbmapsamples->set_enabled(inst != NULL);
 	volenvedit->pleaseDraw();
 }
 
-void handleSampleChange(u16 newsample)
+void handleInstChange(const u16 newinst, const bool reset=true)
 {
-	state->sample = newsample;
-
-	Instrument *inst = song->getInstrument(lbinstruments->getidx());
-	if(inst == 0)
-		return;
-
-	Sample *smp = inst->getSample(newsample);
-	sampleChange(smp);
-}
-
-void handleInstChange(u16 newinst)
-{
-
 	state->instrument = newinst;
-
-	lbsamples->select(0);
 
 	Instrument *inst = song->getInstrument(newinst);
 	updateSampleList(inst);
 	volEnvSetInst(inst);
 	updateKeyLabels();
-	if(inst != NULL)
-	{
-		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
-		handleSampleChange(0);
-	}
+
+	if (reset)
+		handleSampleChange(0); // handles the state sample
+	else if(inst == NULL)
+		handleSampleChange(state->sample); // preserve current sample so user can load new smp into slot >0 on null inst
 	else
-	{
-		sampleChange(NULL);
-		return;
-	}
+		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
+}
+
+void handleInstChangeReset(u16 newinst)
+{
+	handleInstChange(newinst, true);
 }
 
 void updateLabelSongLen(void)
@@ -692,7 +736,7 @@ void setSong(Song *newsong)
 
 	inst = song->getInstrument(0);
 	if(inst != 0)
-		sampleChange(inst->getSample(0));
+		handleSampleChange(0);
 
 	volEnvSetInst(song->getInstrument(0));
 
@@ -722,7 +766,6 @@ void setSong(Song *newsong)
 		sampledisplay->setSample(inst->getSample(state->sample));
 	}
 
-	lbsamples->select(0);
 
 	strncpy(str, song->getName(), 255);
 	labelsongname->setCaption(str);
@@ -746,8 +789,7 @@ bool loadSample(const char *filename_with_path)
 	}
 
 	u8 instidx = lbinstruments->getidx();
-	u8 smpidx = lbsamples->getidx();
-
+	u8 smpidx = state->sample;
 	//
 	// Create the instrument if it doesn't exist
 	//
@@ -763,6 +805,7 @@ bool loadSample(const char *filename_with_path)
 		ntxm_free(instname);
 
 		lbinstruments->set(state->instrument, song->getInstrument(state->instrument)->getName());
+		handleInstChange(instidx, false); // don't implicitly reset lbsamples to pos 0 if loading a sample!
 	}
 
 	//
@@ -779,7 +822,7 @@ bool loadSample(const char *filename_with_path)
 		lbinstruments->set(state->instrument, song->getInstrument(state->instrument)->getName());
 	}
 
-	sampleChange(newsmp);
+	handleSampleChange(smpidx);
 
 	DC_FlushAll();
 
@@ -2096,25 +2139,14 @@ void handleToggleScrollLock(bool on)
 
 void handleToggleMultiSample(bool on)
 {
-	if(on)
-	{
-		drawSampleNumbers();
-		kb->showKeyLabels();
-		tbmultisample->setCaption("-");
-		lbinstruments->resize(114, 67);
-		buttonrenamesample->show();
-		lbsamples->show();
-		tbmapsamples->show();
+	multisamp_from_mapsamp = false;
+
+	if (!on) {
+		handleToggleMapSamples(false);
+		tbmapsamples->setState(false);
 	}
-	else
-	{
-		kb->hideKeyLabels();
-		tbmultisample->setCaption("+");
-		buttonrenamesample->hide();
-		lbsamples->hide();
-		lbinstruments->resize(114, 89);
-		tbmapsamples->hide();
-	}
+		
+	setMultisamplesEnabled(on);
 }
 
 void showTypewriterForSampleRename(void)
@@ -2155,14 +2187,11 @@ void handleRecordSampleOK(void)
 	// Insert the sample into the instrument
 	inst->setSample(state->sample, smp);
 
-	lbsamples->set(state->sample, smp->getName());
-
 	volEnvSetInst(inst);
 
 	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
 
-	sampleChange(smp);
-	updateKeyLabels();
+	handleSampleChange(state->sample);
 	redrawSubScreen();
 }
 
@@ -2733,7 +2762,28 @@ void saveConfig(void)
 		showMessage("config saved!", false);
 }
 
-void toggleMapSamples(bool is_active)
+void setMultisamplesEnabled(bool show)
+{
+	if (show)
+	{
+		drawSampleNumbers();
+		kb->showKeyLabels();
+		lbinstruments->resize(114, 67);
+		lbsamples->show();
+	}
+		
+	else {
+		lbsamples->hide();
+		lbinstruments->resize(114, 89);
+		kb->hideKeyLabels();
+	}
+
+	tbmultisample->setCaption(show ? "-" : "+");
+	tbmultisample->setState(show);
+	buttonrenamesample->set_visible(show);
+}
+
+void handleToggleMapSamples(bool is_active)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
 	if(inst == NULL)
@@ -2741,11 +2791,17 @@ void toggleMapSamples(bool is_active)
 
 	if(is_active)
 	{
-		if(tbmultisample->getState() == false)
-			tbmultisample->setState(true);
+		if(tbmultisample->getState() == false) {
+			setMultisamplesEnabled(true);
+			multisamp_from_mapsamp = true;
+		}
+	} else {
+		if (multisamp_from_mapsamp)
+			setMultisamplesEnabled(false);
 	}
 
 	state->map_samples = is_active;
+	kb->setInMappingMode(is_active);
 }
 
 void toggleQueueLock(bool is_active)
@@ -3274,9 +3330,10 @@ void setupGUI(bool dldi_enabled)
     cbsusenabled->setCaption("sus on");
     cbsusenabled->registerToggleCallback(envToggleSustainEnabled);
     
-		tbmapsamples = new ToggleButton(72, 133, 134-72, 12, &sub_vram, false);
+		tbmapsamples = new ToggleButton(72, 133, 134-72, 12, &sub_vram);
 		tbmapsamples->setCaption("map samp.");
-		tbmapsamples->registerToggleCallback(toggleMapSamples);
+		tbmapsamples->registerToggleCallback(handleToggleMapSamples);
+		tbmapsamples->disable();
 
 		tabbox->registerWidget(btnaddenvpoint, 0, 3);
 		tabbox->registerWidget(btndelenvpoint, 0, 3);
@@ -3451,7 +3508,7 @@ void setupGUI(bool dldi_enabled)
 	numberboxadd->registerChangeCallback(changeAdd);
 	numberboxoctave->registerChangeCallback(changeOctave);
 
-	lbinstruments->registerChangeCallback(handleInstChange);
+	lbinstruments->registerChangeCallback(handleInstChangeReset);
 	lbsamples->registerChangeCallback(handleSampleChange);
 
 	buttoninsnote2->setCaption("ins");
@@ -3610,7 +3667,7 @@ void setupGUI(bool dldi_enabled)
 
 	gui->revealAll();
 
-
+	handleSampleChange(0); // disable samp ed buttons at first as we have no sample!
 	actionBufferChangeCallback();
 	updateTempoAndBpm();
 	handleLinesBeatChange(settings->getLinesPerBeat());
@@ -3734,6 +3791,7 @@ void VblankHandler(void)
 	u16 keysup = keysUp();
 	u16 keysheld = keysHeld();
 	touchRead(&touch);
+
 
 	if(keysdown & KEY_TOUCH)
 	{
@@ -4019,7 +4077,6 @@ int main(int argc, char **argv) {
 	}
 
 	last_themepath[SETTINGS_FILENAME_LEN] = '\0';
-
 	state = new State();
 	
 	clearMainScreen();
