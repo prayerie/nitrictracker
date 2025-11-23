@@ -63,6 +63,7 @@ using namespace tobkit;
 #include "tools.h"
 
 #include "icon_disk_raw.h"
+#include "icon_disk_unsaved_raw.h"
 #include "icon_song_raw.h"
 #include "icon_sample_raw.h"
 #include "icon_wrench_raw.h"
@@ -258,6 +259,7 @@ char last_themepath[SETTINGS_FILENAME_LEN + 1];
 
 bool fastscroll = false;
 bool multisamp_from_mapsamp = false;
+bool mod_loading = false;
 uint16* map;
 
 // TODO: Make own class for tracker control and remove forward declarations
@@ -272,6 +274,8 @@ void redrawSubScreen(void);
 void showMessage(const char *msg, bool error);
 void deleteMessageBox(void);
 void stopPlay(void);
+void setHasUnsavedChanges(bool unsaved);
+
 
 #ifdef DEBUG
 void saveScreenshot(void);
@@ -333,6 +337,15 @@ void updateKeyLabels(void)
 	}
 }
 
+void setHasUnsavedChanges(bool unsaved)
+{
+	bool has_unsaved = unsaved && !mod_loading;
+
+	state->unsaved_changes = has_unsaved;
+
+	if (!tabbox) return;
+	tabbox->setIcon(1, has_unsaved ? icon_disk_unsaved_raw : icon_disk_raw);
+}
 static void handleNoteAdvanceRow(void)
 {
 	// Check if we are not at the bottom and only scroll down as far as possible
@@ -557,6 +570,8 @@ void updateFilesystemState(bool draw)
 
 void handleSampleChange(const u16 newsample)
 {
+	bool had_changes = state->unsaved_changes;
+
 	state->sample = newsample;
 	Instrument *inst = song->getInstrument(lbinstruments->getidx());
 	Sample *smp = inst ? inst->getSample(newsample) : NULL;
@@ -604,6 +619,7 @@ void handleSampleChange(const u16 newsample)
 		rbg_sampleloop->setActive(0);
 		
 	updateKeyLabels();
+	if (!had_changes) setHasUnsavedChanges(false);
 	/*
 	printf("Selected:");
 	if(smp->is16bit()) {
@@ -622,6 +638,7 @@ void handleSampleChange(const u16 newsample)
 
 void volEnvSetInst(Instrument *inst)
 {
+	bool had_unsaved = state->unsaved_changes;
 	if(inst == NULL)
 	{
 		volenvedit->setZoomAndPos(0, 0);
@@ -647,6 +664,7 @@ void volEnvSetInst(Instrument *inst)
 	cbsusenabled->set_enabled(inst != NULL);
 	tbmapsamples->set_enabled(inst != NULL);
 	volenvedit->pleaseDraw();
+	if (!had_unsaved) setHasUnsavedChanges(false);
 }
 
 void handleInstChange(const u16 newinst, const bool reset=true)
@@ -771,7 +789,8 @@ void setSong(Song *newsong)
 	labelsongname->setCaption(str);
 
 	ntxm_free(str);
-
+	mod_loading = false;
+	setHasUnsavedChanges(false);
 	drawMainScreen();
 }
 
@@ -826,6 +845,7 @@ bool loadSample(const char *filename_with_path)
 
 	DC_FlushAll();
 
+	setHasUnsavedChanges(true);
 	return true;
 }
 
@@ -857,15 +877,22 @@ void showSlowLoadOperation(std::function<const char*(void)> loadOp)
 		showMessage(res, true);
 }
 
+File *getSelectedFile(void)
+{
+	File *file = fileselector->getSelectedFile();
+	if((file==0)||(file->is_dir == true))
+		return NULL;
+
+	return file;
+}
+
 void handleDelfileConfirmed(void)
 {
 	deleteMessageBox();
 
-	File *file = fileselector->getSelectedFile();
+	File *file = getSelectedFile();
+	if(file==0) return;
 	debugprintf("%s\n", file->name_with_path.c_str());
-	if((file==0)||(file->is_dir == true)) {
-		return;
-	}
 
 	const char *fn = file->name_with_path.c_str();
 	if (unlink(fn)) {
@@ -878,11 +905,9 @@ void handleDelfileConfirmed(void)
 
 void handleDelfile(void)
 {
-	File *file = fileselector->getSelectedFile();
+	File *file = getSelectedFile();
+	if(file==0) return;
 	debugprintf("%s\n", file->name_with_path.c_str());
-	if((file==0)||(file->is_dir == true)) {
-		return;
-	}
 
 	mb = new MessageBox(&sub_vram, "are you sure?", 2, "yes", handleDelfileConfirmed, "no", deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
@@ -890,37 +915,54 @@ void handleDelfile(void)
 	mb->pleaseDraw();
 }
 
+
+void loadModule(void)
+{
+	deleteMessageBox();
+
+	File *file = getSelectedFile();
+	if(file==0) return;
+
+	delete song; // For christs sake do some checks before deleting the song!!
+	pv->unmuteAll();
+
+	mod_loading = true;
+	showSlowLoadOperation([file](){
+		Song *newsong;
+		u16 err;
+		err = xm_transport.load(file->name_with_path.c_str(), &newsong);
+		if (err)
+		{
+			setSong(new Song(10, 125));
+			return xm_transport.getError(err);
+		}
+		else
+		{
+			setSong(newsong);
+			return (const char*) NULL;
+		}
+	});
+	setHasUnsavedChanges(false);
+}
+
 void handleLoad(void)
 {
-	File *file = fileselector->getSelectedFile();
-	if((file==0)||(file->is_dir == true)) {
-		return;
-	}
+	File *file = getSelectedFile();
+	if(file==0) return;
 
 	const char *fn = file->name.c_str();
-	
 	if(strcasecmp(fn + strlen(fn) - 3, ".xm")==0)
 	{
 		stopPlay();
 
-		delete song; // For christs sake do some checks before deleting the song!!
-		pv->unmuteAll();
-
-		showSlowLoadOperation([file](){
-			Song *newsong;
-			u16 err;
-			err = xm_transport.load(file->name_with_path.c_str(), &newsong);
-			if (err)
-			{
-				setSong(new Song(10, 125));
-				return xm_transport.getError(err);
-			}
-			else
-			{
-				setSong(newsong);
-				return (const char*) NULL;
-			}
-		});
+		if (state->unsaved_changes) {
+			mb = new MessageBox(&sub_vram, "you have unsaved changes", 2, "load", loadModule, "cancel", deleteMessageBox);
+			gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+			mb->reveal();
+			mb->pleaseDraw();
+		} else 
+			loadModule();
+		
 	}
 	else if(strcasecmp(fn + strlen(fn) - 4, ".wav")==0)
 	{
@@ -930,6 +972,8 @@ void handleLoad(void)
 		});
 	}
 }
+
+
 
 // Reads filename and path from fileselector and saves the file
 void saveFile(void)
@@ -989,7 +1033,8 @@ void saveFile(void)
 	if(err > 0)
 	{
 		showMessage(xm_transport.getError(err), true);
-	}
+	} else
+		setHasUnsavedChanges(false);
 }
 
 void mbOverwrite(void) {
@@ -1003,7 +1048,7 @@ void handleSave(void)
 	// sporadic filename sanity check
 	char *filename = labelFilename->getCaption();
 	if(strlen(filename)==0) {
-		showMessage("No filename!", true);
+		showMessage("no filename!", true);
 		return;
 	}
 
@@ -1012,13 +1057,13 @@ void handleSave(void)
 		Instrument *inst = song->getInstrument(state->instrument);
 		if(inst == NULL)
 		{
-			showMessage("Empty instrument!", true);
+			showMessage("empty instrument!", true);
 			return;
 		}
 		Sample *smp = inst->getSample((state->sample));
 		if(smp == NULL)
 		{
-			showMessage("Empty sample!", true);
+			showMessage("empty sample!", true);
 			return;
 		}
 	}
@@ -1138,6 +1183,7 @@ void stopNoteStroke(void) {
 static void actionBufferChangeCallback(void) {
 	buttonundo->set_enabled(action_buffer->can_undo());
 	buttonredo->set_enabled(action_buffer->can_redo());
+	if (action_buffer->can_undo() || action_buffer->can_redo()) setHasUnsavedChanges(true);
 	redraw_main_requested = true;
 }
 
@@ -1447,6 +1493,7 @@ void handlePotDec(void) {
 	char str[3];
 	snprintf(str, sizeof(str), "%2x", pattern);
 	lbpot->set(state->potpos, str);
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1474,6 +1521,7 @@ void handlePotInc(void)
 	char str[3];
 	snprintf(str, sizeof(str), "%2x", pattern);
 	lbpot->set(state->potpos, str);
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1486,6 +1534,7 @@ void handlePotIns(void)
 	DC_FlushAll();
 	lbpot->ins(lbpot->getidx(), lbpot->get(lbpot->getidx()));
 	updateLabelSongLen();
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1512,6 +1561,7 @@ void handlePotDel(void)
 		nsrestartpos->setValue( song->getRestartPosition() );
 		DC_FlushAll();
 	}
+	setHasUnsavedChanges(true);
 }
 
 void handlePtnClone(void)
@@ -1541,6 +1591,7 @@ void handlePtnClone(void)
 	lbpot->ins(lbpot->getidx()+1, numberstr);
 
 	updateLabelSongLen();
+	setHasUnsavedChanges(true);
 }
 
 void handleChannelAdd(void)
@@ -1549,6 +1600,7 @@ void handleChannelAdd(void)
 	song->channelAdd();
 	redraw_main_requested = true;
 	updateLabelChannels();
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1576,6 +1628,7 @@ void handleChannelDel(void)
 
 	redraw_main_requested = true;
 	updateLabelChannels();
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1594,17 +1647,20 @@ void handlePtnLengthChange(s32 newlength)
 			state->setCursorRow(newlength-1);
 		}
 		redraw_main_requested = true;
+		setHasUnsavedChanges(true);
 	}
 }
 
 
 void handleTempoChange(u8 tempo) {
 	song->setTempo(tempo);
+	setHasUnsavedChanges(true);
 	DC_FlushAll();
 }
 
 void handleBpmChange(s32 bpm) {
 	song->setBpm(bpm);
+	setHasUnsavedChanges(true);
 	DC_FlushAll();
 }
 
@@ -1612,6 +1668,7 @@ void handleLinesBeatChange(u8 lpb) {
 	settings->setLinesPerBeat(lpb);
 	pv->setLinesPerBeat(lpb);
 	redraw_main_requested = true;
+	setHasUnsavedChanges(true);
 }
 
 void handleRestartPosChange(s32 restartpos)
@@ -1621,6 +1678,7 @@ void handleRestartPosChange(s32 restartpos)
 		restartpos = song->getPotLength()-1;
 	}
 	song->setRestartPosition(restartpos);
+	setHasUnsavedChanges(true);
 	DC_FlushAll();
 }
 
@@ -1672,6 +1730,7 @@ void zapInstruments(void)
 
 	CommandSetSong(song);
 	updateMemoryState(true);
+	setHasUnsavedChanges(true);
 }
 
 void zapSong(void) {
@@ -2192,6 +2251,7 @@ void handleRecordSampleOK(void)
 	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
 
 	handleSampleChange(state->sample);
+	setHasUnsavedChanges(true);
 	redrawSubScreen();
 }
 
@@ -2255,7 +2315,7 @@ void handleNormalizeOK(void)
 	}
 
 	sample->normalize(percent, startsample, endsample);
-
+	setHasUnsavedChanges(true);
 	gui->unregisterOverlayWidget();
 	delete normalizeBox;
 	redrawSubScreen();
@@ -2521,6 +2581,7 @@ void handleSampleVolumeChange(s32 newvol)
 
 	smp->setVolume(vol);
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void handleSamplePanningChange(s32 newpanning)
@@ -2533,6 +2594,7 @@ void handleSamplePanningChange(s32 newpanning)
 
 	u8 pan = newpanning * 2;
 
+	if (smp->getPanning() != pan) setHasUnsavedChanges(true);
 	smp->setPanning(pan);
 	smp->setBasePanning();
 	DC_FlushAll();
@@ -2548,7 +2610,9 @@ void handleSampleRelNoteChange(s32 newnote)
 
 	DC_FlushAll();
 
+	if (smp->getRelNote() != newnote) setHasUnsavedChanges(true);
 	smp->setRelNote(newnote);
+	
 }
 
 void handleSampleFineTuneChange(s32 newfinetune)
@@ -2561,6 +2625,7 @@ void handleSampleFineTuneChange(s32 newfinetune)
 
 	DC_FlushAll();
 
+	if (smp->getFinetune() != newfinetune) setHasUnsavedChanges(true);
 	smp->setFinetune(newfinetune);
 }
 
@@ -2605,6 +2670,7 @@ void sample_del_selection(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp);
+	setHasUnsavedChanges(true);
 }
 
 void sample_fade_in(void)
@@ -2626,6 +2692,7 @@ void sample_fade_in(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp);
+	setHasUnsavedChanges(true);
 }
 
 void sample_fade_out(void)
@@ -2647,6 +2714,7 @@ void sample_fade_out(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp);
+	setHasUnsavedChanges(true);
 }
 
 void sample_reverse(void)
@@ -2671,6 +2739,7 @@ void sample_reverse(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp);
+	setHasUnsavedChanges(true);
 }
 
 void sampleTabBoxChage(u8 tab)
@@ -2878,6 +2947,8 @@ void envZoomOut(void)
 	volenvedit->zoomOut();
 }
 
+
+
 void volEnvPointsChanged(void)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
@@ -2893,6 +2964,7 @@ void volEnvPointsChanged(void)
 	volenvedit->pleaseDraw();
 
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void volEnvDrawFinish(void)
@@ -2900,6 +2972,7 @@ void volEnvDrawFinish(void)
 	cbvolenvenabled->setChecked(true);
 	toggleVolEnvEnabled(true);
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void envStartDrawMode(void)
@@ -2927,6 +3000,7 @@ void envSetSustainPoint(void)
 	volenvedit->pleaseDraw();
 
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void envToggleSustainEnabled(bool is_enabled)
@@ -2939,6 +3013,7 @@ void envToggleSustainEnabled(bool is_enabled)
 		volenvedit->toggleSustain(is_enabled);
 		volenvedit->pleaseDraw();
 	}
+	setHasUnsavedChanges(true);
 }
 
 void sampleDrawToggle(bool on)
@@ -2970,7 +3045,7 @@ void setupGUI(bool dldi_enabled)
 	tabbox->addTab(icon_sample_raw, 2);
 	tabbox->addTab(icon_trumpet_raw, 3);
 	tabbox->addTab(icon_wrench_raw, 4);
-
+	
 	// <Disk OP GUI>
 		fileselector = new FileSelector(38, 21, 100, 111, &sub_vram);
 
@@ -3671,7 +3746,7 @@ void setupGUI(bool dldi_enabled)
 	actionBufferChangeCallback();
 	updateTempoAndBpm();
 	handleLinesBeatChange(settings->getLinesPerBeat());
-
+	setHasUnsavedChanges(false);
 
 	gui->drawSubScreen(); // GUI
 	drawMainScreen(); // Pattern view. The function also flips buffers
