@@ -624,6 +624,7 @@ void handleSampleChange(const u16 newsample)
 	buttonsmpselall->set_enabled(smp != NULL);
 	buttonsmpselnone->set_enabled(smp != NULL);
 	buttonsmpseldel->set_enabled(smp != NULL);
+	buttonsmptrim->set_enabled(smp != NULL);
 	buttonsmpreverse->set_enabled(smp != NULL);
 	buttonsmpnormalize->set_enabled(smp != NULL);
 	cbsnapto0xing->set_enabled(smp != NULL);
