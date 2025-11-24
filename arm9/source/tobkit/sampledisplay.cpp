@@ -45,12 +45,20 @@ SampleDisplay::SampleDisplay(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, S
 	scrollthingypos(0), scrollthingywidth(width-2*SCROLLBUTTON_HEIGHT+2), pen_x_on_scrollthingy(0), zoom_level(0), scrollpos(0),
 	snap_to_zero_crossings(true), draw_mode(false)
 {
-
+	for (int i = 0; i < DRAW_HEIGHT_S + 1; ++i) {
+		previous_cursor_pixels[i] = 0;
+	}
 }
 
 SampleDisplay::~SampleDisplay(void)
 {
 
+}
+
+void SampleDisplay::setTheme(Theme *theme_, u16 bgcolor_)
+{
+	last_cursor_draw_x = 0;
+	Widget::setTheme(theme_, bgcolor_);
 }
 
 void SampleDisplay::penDown(u8 px, u8 py)
@@ -226,14 +234,83 @@ void SampleDisplay::penMove(u8 px, u8 py)
 	draw();
 }
 
+void SampleDisplay::setCursorPosPtr(u32 *cursorpos_)
+{
+	cursorpos = cursorpos_;
+}
+
+void SampleDisplay::eraseCursor(void)
+{
+	if (last_cursor_draw_x != 0)
+		for (int i = 0; i < DRAW_HEIGHT + 1; ++i) {
+			*(*vram + SCREEN_WIDTH * (y + i + 1) + x + last_cursor_draw_x) = previous_cursor_pixels[i];
+		}
+}
+
+void SampleDisplay::drawCursor(void)
+{
+	if (smp==0 || cursorpos==0) return;
+	u32 position_samps = *cursorpos;
+	
+	if (position_samps != 0) {
+		u32 drawpix = sampleToPixel((position_samps));
+		// draw the previous pixels on the previous cursor pos
+		eraseCursor();
+		if (drawpix < x + width) {
+			s32 draw_at_x = sampleToPixel(position_samps);
+
+			u16 col_cursor = theme->col_env_sustain;
+
+			if (!playing)
+				return;
+				
+			// backup pixels that were underneath the cursor
+			// we could just draw one line of the waveform, but that
+			// doesn't account for the zoom buttons or loop handles
+			if (last_cursor_draw_x != (u32)draw_at_x) {
+				last_cursor_draw_x = (u32)draw_at_x;
+				for(int i=0;i<DRAW_HEIGHT + 1;++i)
+					previous_cursor_pixels[i] = *(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x);
+			}
+
+			// ...and finally, draw the cursor itself
+			if (!(draw_at_x >= width + 1) && draw_at_x != 0) {
+				for(int i=0;i<DRAW_HEIGHT+1;++i) {
+					*(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x) = col_cursor;
+				}
+			}
+		}
+	}
+}
+
+void SampleDisplay::stopCursor(bool full_redraw = false)  {
+	playing = false;
+	if (full_redraw && last_cursor_draw_x != 0) { // don't redraw if we never drew the cursor
+		draw();
+		last_cursor_draw_x = 0;
+	}
+}
+
+// commented out sections facilitating for 09xx command support
+// if/when it is added
+void SampleDisplay::startCursor(u8 note/*, u32 offs_raw*/)  {
+	// setOffsetRaw(offs_raw);
+	if (smp == NULL) return;
+
+	stopCursor(true); // stop previous cursor if necessary
+	playing = true;
+}
+
 void SampleDisplay::setSample(Sample *_smp)
 {
-	smp = _smp;
+	last_cursor_draw_x = 0;
 	selection_exists = false;
 	selstart = selend = 0;
 	if(_smp == 0) {
 		loop_points_visible = false;
 	}
+	if (_smp == smp) return;
+	smp = _smp;
 	draw();
 }
 

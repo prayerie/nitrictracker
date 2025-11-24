@@ -434,20 +434,29 @@ void handleNoteFill(u8 note, bool while_playing)
 }
 
 // swap the sample display if the key has another
-// sample mapped
+// sample mapped then start the cursor
 void onKeypress(u8 note)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
 	if (inst==0) return;
 	
+	// pr153 note: this assumes no polyphony and will play
+	// the last note pressed in a chord and draw only one cursor
+	// for that/switch to it. Could be updated in future to draw
+	// multiple concurrent cursors
 	u16 newsamp = inst->getNoteSample(note + state->basenote);
 
 	handleSampleChange(newsamp);
+
+	if (!inst->getSampleForNote(note)) return;
+	sampledisplay->startCursor(note); // don't call this in sampleChange as lbsamples doesn't play the note
 }
 
 void onKeyrelease(void)
 {
-	// stop cursor
+	// extracted into a function for pr153 compat
+	sampledisplay->eraseCursor();
+	sampledisplay->stopCursor(true);
 }
 
 void handleNoteStroke(u8 note)
@@ -1450,6 +1459,13 @@ void handlePotPosChangeFromSong(u16 newpotpos)
 
 	// Update other GUI Elements
 	updateGuiToNewPattern(song->getPotEntry(state->potpos));
+}
+
+void handleStopCursor(void)
+{
+	if (sampledisplay==0) return;
+
+	sampledisplay->stopCursor(false);
 }
 
 #ifdef MIDI
@@ -3997,6 +4013,9 @@ void VblankHandler(void)
 	touchRead(&touch);
 
 
+	if (sampledisplay != NULL && sampledisplay->getIsExposed())
+		sampledisplay->drawCursor();
+
 	if(keysdown & KEY_TOUCH)
 	{
 		gui->penDown(touch.px, touch.py);
@@ -4299,12 +4318,16 @@ int main(int argc, char **argv) {
 	RegisterStopCallback(handleStop);
 	RegisterPlaySampleFinishedCallback(handlePreviewSampleFinished);
 	RegisterPotPosChangeCallback(handlePotPosChangeFromSong);
+	RegisterStopCursorCallback(handleStopCursor);
 
 	setupSong();
 
 	CommandSetSong(song);
 
 	setupGUI(fat_success);
+	u32 *pcursor = (u32*)ntxm_ccalloc(1, sizeof(u32));
+	CommandSetCursorPosPtr(pcursor);
+	sampledisplay->setCursorPosPtr((u32*)memUncached(pcursor));
 	action_buffer->register_change_callback({&actionBufferChangeCallback});
 
 	applySettings();
