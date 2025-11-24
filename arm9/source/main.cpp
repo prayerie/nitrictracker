@@ -2299,6 +2299,7 @@ void handleRecordSampleCancel(void)
 	CommandMicOff();
 
 	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 // OMG FUCKING BEST FEATURE111
