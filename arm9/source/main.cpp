@@ -1714,6 +1714,14 @@ void handleRestartPosChange(s32 restartpos)
 	DC_FlushAll();
 }
 
+void confirmZap(void (*onConfirm)(void))
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "are you sure", 2, "yes", onConfirm, "cancel", deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
+}
+
 void zapPatterns(void)
 {
 	song->zapPatterns();
@@ -1742,20 +1750,23 @@ void zapPatterns(void)
 }
 
 void zapUnusedInstruments(void) {
-	u8 instList[MAX_INSTRUMENTS]; // indices of instruments that were cleared
-	u8 n_un = song->zapUnusedInstruments(instList);
-	if (n_un > 0)
-		for (int i = 0; i < n_un; i++) {
-			lbinstruments->set(instList[i], "");
-			if (lbinstruments->getidx() == i) {
-				sampledisplay->setSample(NULL);
-				handleSampleChange(0);
-				for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
-					lbsamples->set(i, "");
-				}
+	bool used_insts[MAX_INSTRUMENTS] = { false };
+
+	song->zapUnusedInstruments(used_insts);
+
+	for (int i = 0; i < MAX_INSTRUMENTS; i++) {
+		if (!used_insts[i]) continue;
+
+		lbinstruments->set(i, "");
+		if (lbinstruments->getidx() == i) {
+			sampledisplay->setSample(NULL);
+			handleSampleChange(0);
+			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+				lbsamples->set(i, "");
 			}
 		}
-
+	}
+		
 	DC_FlushAll();
 	deleteMessageBox();
 	CommandSetSong(song);
@@ -1803,6 +1814,7 @@ void zapInstruments(void)
 	setHasUnsavedChanges(true);
 }
 
+
 void zapSong(void) {
 	deleteMessageBox();
 	delete song;
@@ -1810,11 +1822,26 @@ void zapSong(void) {
 	updateMemoryState(true);
 }
 
+void confirmZapSong(void)
+{
+	confirmZap(zapSong);
+}
+
+void confirmZapInsts(void)
+{
+	confirmZap(zapInstruments);
+}
+
+void confirmZapPatterns(void)
+{
+	confirmZap(zapPatterns);
+}
+
 void zapInstrumentsChoice(void)
 {
 	deleteMessageBox();
 	mb = new MessageBox(&sub_vram, "which instruments", 4, "selected", zapCurrentInstrument, "unused", zapUnusedInstruments,
-		"  all  ", zapInstruments, "cancel",
+		"  all  ", confirmZapInsts, "cancel",
 		deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
@@ -1824,8 +1851,8 @@ void handleZap(void)
 {
 	stopPlay(); // Safety first
 
-	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", zapPatterns,
-		"instruments", zapInstrumentsChoice, "song", zapSong, "cancel",
+	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", confirmZapPatterns,
+		"instruments", zapInstrumentsChoice, "song", confirmZapSong, "cancel",
 		deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
