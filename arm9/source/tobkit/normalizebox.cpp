@@ -37,10 +37,10 @@ using namespace tobkit;
 /* ===================== PUBLIC ===================== */
 
 // Constructor sets base variables
-NormalizeBox::NormalizeBox(u16 **_vram, void (*_onOk)(void), void (*_onCancel)(void))
+NormalizeBox::NormalizeBox(u16 **_vram, void (*_onOk)(void), void (*_onAuto)(void), void (*_onCancel)(void))
 	:Widget((SCREEN_WIDTH-NORMALIZEBOX_WIDTH)/2, (SCREEN_HEIGHT-NORMALIZEBOX_HEIGHT)/2,
 		NORMALIZEBOX_WIDTH, NORMALIZEBOX_HEIGHT, _vram),
-	onOk(_onOk), onCancel(_onCancel)
+	onOk(_onOk), onAuto(_onAuto), onCancel(_onCancel)
 {
 	title = "adjust amplitude";
 	
@@ -49,23 +49,31 @@ NormalizeBox::NormalizeBox(u16 **_vram, void (*_onOk)(void), void (*_onCancel)(v
 	labelpercent = new Label(x+(NORMALIZEBOX_WIDTH-32)/2 + 34, y+25, 20, 12, _vram, false);
 	labelpercent->setCaption("%");
 	
-	buttonok = new Button(x+(NORMALIZEBOX_WIDTH-50)/2 - 27, y+40, 50, 14, _vram);
+	buttonok = new Button(x+(NORMALIZEBOX_WIDTH-50)/2 - 45, y+40, 45, 14, _vram);
 	buttonok->setCaption("ok");
 	buttonok->registerPushCallback(_onOk);
 	
-	buttoncancel = new Button(x+(NORMALIZEBOX_WIDTH-50)/2 + 27, y+40, 50, 14, _vram);
+	buttonauto = new Button(x+(NORMALIZEBOX_WIDTH-50)/2 + 5, y+40, 40, 14, _vram);
+	buttonauto->setCaption("auto");
+	buttonauto->registerPushCallback(_onAuto);
+
+	buttoncancel = new Button(x+(NORMALIZEBOX_WIDTH-50)/2 + 50, y+40, 45, 14, _vram);
 	buttoncancel->setCaption("cancel");
 	buttoncancel->registerPushCallback(_onCancel);
 	
 	gui.registerWidget(nspercent, 0);
 	gui.registerWidget(labelpercent, 0);
 	gui.registerWidget(buttonok, 0);
+	gui.registerWidget(buttonauto, 0);
 	gui.registerWidget(buttoncancel, 0);
 }
 
 NormalizeBox::~NormalizeBox(void)
 {
+	delete nspercent;
+	delete labelpercent;
 	delete buttonok;
+	delete buttonauto;
 	delete buttoncancel;
 }
 
