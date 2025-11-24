@@ -39,7 +39,7 @@ namespace tobkit {
 class NormalizeBox: public Widget {
 	public:
 		// Constructor sets base variables
-		NormalizeBox(u16 **_vram, void (*_onOk)(void), void (*_onCancel)(void));
+		NormalizeBox(u16 **_vram, void (*_onOk)(void), void (*_onAuto)(void), void (*_onCancel)(void));
 		~NormalizeBox(void);
 		
 		// Drawing request
@@ -60,12 +60,13 @@ class NormalizeBox: public Widget {
 		void draw(void);
 		
 		void (*onOk)(void);
+		void (*onAuto)(void);
 		void (*onCancel)(void);
 		
 		GUI gui;
 		const char *title;
 		Label *labelpercent;
-		Button *buttonok, *buttoncancel;
+		Button *buttonok, *buttonauto, *buttoncancel;
 		NumberSlider *nspercent;
 	
 };
