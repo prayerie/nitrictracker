@@ -789,12 +789,11 @@ void setSong(Song *newsong)
 	updateSampleList(song->getInstrument(0));
 
 	inst = song->getInstrument(0);
-	if(inst != 0)
-		handleSampleChange(0);
+	handleSampleChange(0);
+		
 
 	volEnvSetInst(song->getInstrument(0));
 
-	inst = song->getInstrument(0);
 	if(inst != 0)
 	{
 		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
@@ -1715,6 +1714,14 @@ void handleRestartPosChange(s32 restartpos)
 	DC_FlushAll();
 }
 
+void confirmZap(void (*onConfirm)(void))
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "are you sure", 2, "yes", onConfirm, "cancel", deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
+}
+
 void zapPatterns(void)
 {
 	song->zapPatterns();
@@ -1738,6 +1745,47 @@ void zapPatterns(void)
 	redraw_main_requested = false;
 	drawMainScreen();
 
+	CommandSetSong(song);
+	updateMemoryState(true);
+}
+
+void zapUnusedInstruments(void) {
+	bool used_insts[MAX_INSTRUMENTS] = { false };
+
+	song->zapUnusedInstruments(used_insts);
+
+	for (int i = 0; i < MAX_INSTRUMENTS; i++) {
+		if (used_insts[i]) continue;
+
+		lbinstruments->set(i, "");
+		if (lbinstruments->getidx() == i) {
+			sampledisplay->setSample(NULL);
+			handleSampleChange(0);
+			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+				lbsamples->set(i, "");
+			}
+		}
+	}
+		
+	DC_FlushAll();
+	deleteMessageBox();
+	CommandSetSong(song);
+	updateMemoryState(true);
+}
+
+void zapCurrentInstrument(void) {
+	PrintFreeMem();
+	u8 inst = lbinstruments->getidx();
+	song->zapInstrument(inst);
+	sampledisplay->setSample(NULL);
+	handleSampleChange(0);
+	DC_FlushAll();
+	deleteMessageBox();
+	
+	lbinstruments->set(inst, "");
+	for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+		lbsamples->set(i, "");
+	}
 	CommandSetSong(song);
 	updateMemoryState(true);
 }
@@ -1766,6 +1814,7 @@ void zapInstruments(void)
 	setHasUnsavedChanges(true);
 }
 
+
 void zapSong(void) {
 	deleteMessageBox();
 	delete song;
@@ -1773,12 +1822,37 @@ void zapSong(void) {
 	updateMemoryState(true);
 }
 
+void confirmZapSong(void)
+{
+	confirmZap(zapSong);
+}
+
+void confirmZapInsts(void)
+{
+	confirmZap(zapInstruments);
+}
+
+void confirmZapPatterns(void)
+{
+	confirmZap(zapPatterns);
+}
+
+void zapInstrumentsChoice(void)
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "which instruments", 4, "selected", zapCurrentInstrument, "unused", zapUnusedInstruments,
+		"  all  ", confirmZapInsts, "cancel",
+		deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
+}
+
 void handleZap(void)
 {
 	stopPlay(); // Safety first
 
-	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", zapPatterns,
-		"instruments", zapInstruments, "song", zapSong, "cancel",
+	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", confirmZapPatterns,
+		"instruments", zapInstrumentsChoice, "song", confirmZapSong, "cancel",
 		deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
