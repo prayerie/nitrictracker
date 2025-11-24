@@ -30,7 +30,7 @@
 State::State(void) {
 	song_filename = (char*) ntxm_cmalloc(STATE_FILENAME_LEN + 1);
 	sample_filename = (char*) ntxm_cmalloc(STATE_FILENAME_LEN + 1);
-
+	
 	reset();
 }
 
@@ -47,7 +47,6 @@ void State::reset(void)
 	preview_sample = 0;
 	song_filename[0] = 0;
 	sample_filename[0] = 0;
-
 	resetSong();
 }
 
@@ -67,4 +66,5 @@ void State::resetSong(void) // resets only song-specific settings
 	pause = false;
 	map_samples = false;
 	scroll_lock = false;
+	unsaved_changes = false;
 }
