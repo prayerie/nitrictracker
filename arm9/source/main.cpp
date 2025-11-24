@@ -1755,7 +1755,7 @@ void zapUnusedInstruments(void) {
 	song->zapUnusedInstruments(used_insts);
 
 	for (int i = 0; i < MAX_INSTRUMENTS; i++) {
-		if (!used_insts[i]) continue;
+		if (used_insts[i]) continue;
 
 		lbinstruments->set(i, "");
 		if (lbinstruments->getidx() == i) {
