@@ -2286,6 +2286,7 @@ void handleRecordSampleOK(void)
 	handleSampleChange(state->sample);
 	setHasUnsavedChanges(true);
 	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 void handleRecordSampleCancel(void)
