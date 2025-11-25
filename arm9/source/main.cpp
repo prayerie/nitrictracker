@@ -635,6 +635,7 @@ void handleSampleChange(const u16 newsample)
 	buttonsmpseldel->set_enabled(smp != NULL);
 	buttonsmpreverse->set_enabled(smp != NULL);
 	buttonsmpnormalize->set_enabled(smp != NULL);
+	buttonsmptrim->set_enabled(smp != NULL);
 	cbsnapto0xing->set_enabled(smp != NULL);
 	buttonsmpdraw->set_enabled(smp != NULL);
 
@@ -652,7 +653,7 @@ void handleSampleChange(const u16 newsample)
 		return;
 	}
 
-	sampledisplay->setSample(smp);
+	sampledisplay->setSample(smp, false);
 	sampledisplay->hideLoopPoints();
 	nssamplevolume->setValue( (smp->getVolume()+1)/4 );
 	nspanning->setValue(smp->getPanning()/2);
@@ -2458,7 +2459,7 @@ void handleNormalizeAuto(void)
 	}
 
 	u32 max_amplitude = sample->getMaxAmplitude(startsample, endsample);
-	u16 factor = (sample->getDynamicRange() << 16) / ((max_amplitude << 16) / 100);
+	u16 factor = ((sample->getDynamicRange() / 2) << 16) / ((max_amplitude << 16) / 100);
 	factor = ntxm_clamp(factor, 100, 2000);
 	sample->normalize(factor, startsample, endsample);
 	setHasUnsavedChanges(true);

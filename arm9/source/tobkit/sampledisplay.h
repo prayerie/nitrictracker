@@ -57,7 +57,7 @@ class SampleDisplay: public Widget {
 		// Drawing request
 		void pleaseDraw(void);
 
-		void setSample(Sample *_smp);
+		void setSample(Sample *_smp, bool redraw=true);
 		bool getIsExposed(void) { return isExposed(); }
 		void select_all(void);
 		void clear_selection(void);

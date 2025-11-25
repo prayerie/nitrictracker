@@ -301,7 +301,7 @@ void SampleDisplay::startCursor(u8 note/*, u32 offs_raw*/)  {
 	playing = true;
 }
 
-void SampleDisplay::setSample(Sample *_smp)
+void SampleDisplay::setSample(Sample *_smp, bool redraw)
 {
 	last_cursor_draw_x = 0;
 	selection_exists = false;
@@ -309,7 +309,7 @@ void SampleDisplay::setSample(Sample *_smp)
 	if(_smp == 0) {
 		loop_points_visible = false;
 	}
-	if (_smp == smp) return;
+	if (_smp == smp && !redraw) return;
 	smp = _smp;
 	draw();
 }
