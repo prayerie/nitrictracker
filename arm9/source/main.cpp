@@ -2299,7 +2299,6 @@ void handleRecordSample(void)
 
 }
 
-
 void handleNormalizeOK(void)
 {
 	u16 percent = normalizeBox->getValue();
@@ -2324,7 +2323,6 @@ void handleNormalizeOK(void)
 void handleNormalizeAuto(void)
 {
 	Sample *sample = song->getInstrument(state->instrument)->getSample(state->sample);
-
 	u32 startsample, endsample;
 	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
 	if(!sel_exists)
@@ -2333,7 +2331,10 @@ void handleNormalizeAuto(void)
 		endsample = sample->getNSamples() - 1;
 	}
 
-	sample->autoNormalize(startsample, endsample);
+	u32 max_amplitude = sample->getMaxAmplitude(startsample, endsample);
+	u16 factor = ((sample->getDynamicRange() / 2) << 16) / ((max_amplitude << 16) / 100);
+	factor = ntxm_clamp(factor, 100, 2000);
+	sample->normalize(factor, startsample, endsample);
 	setHasUnsavedChanges(true);
 	gui->unregisterOverlayWidget();
 	delete normalizeBox;
