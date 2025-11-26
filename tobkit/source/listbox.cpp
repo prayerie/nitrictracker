@@ -25,7 +25,7 @@ using namespace tobkit;
 
 ListBox::ListBox(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, u16 n_items,
 	bool _show_numbers, bool _visible, bool _zero_offset)
-	:Widget(_x, _y, _width, _height, _vram, _visible),
+	:Widget(_x, _y, _width, _height, _vram, _visible), tickerframe(0),
 	buttonstate(0), activeelement(0), highlightedelement(-1), scrollpos(0),
 	show_numbers(_show_numbers),
 	zero_offset(_zero_offset)
@@ -51,6 +51,8 @@ void ListBox::penDown(u8 px, u8 py)
 {
 	u8 relx = px-x, rely = py-y;
 	if(relx<width-SCROLLBAR_WIDTH) {
+		tickerframe = 0;
+		rev = false;
 		// Item select
 		u16 rel_item_clicked;
 		rel_item_clicked = rely / ROW_HEIGHT;
@@ -269,6 +271,17 @@ void ListBox::select(u16 idx, bool scroll)
 	draw();
 }
 
+void ListBox::tickFrame(void)
+{
+	 { 
+			if (tickerframe == 128) 
+				tickerframe = 0; 
+				
+			tickerframe += 1; 
+			draw(); 
+			
+		}
+}
 /* ===================== PRIVATE ===================== */
 
 void ListBox::draw(void)
@@ -373,15 +386,56 @@ void ListBox::draw(void)
 	} else {
 		contentoffset = 0;
 	}
-	
+	char debugtext[256] = { 0 };
+	snprintf(debugtext, 200, "ticker=%u\n", tickerframe);
+	nocashMessage(debugtext);
 	// Content
-	for(i=0;(i<height/ROW_HEIGHT)&&(scrollpos+i<elements.size());++i) {
-		drawString(elements.at(scrollpos+i).c_str(), contentoffset+2, ROW_HEIGHT*i+2,
-			scrollpos+i == activeelement ? theme->col_text_lb_highlight : theme->col_text_lb,
-			width-contentoffset-2-SCROLLBAR_WIDTH-2,
-			height-(ROW_HEIGHT*i+4)
-		);
+	for (i = 0;(i < height / ROW_HEIGHT) && (scrollpos + i < elements.size());++i) {
+		u16 swidth = getStringWidth(elements.at(scrollpos + i).c_str());
+		if (scrollpos + i == activeelement && swidth > width)
+		{
+			std::string original(elements.at(scrollpos + i));
+			s16 len = original.length();
+			if (len == 0) continue;
+
+			s16 startind = 0;
+			if (!rev)
+			{
+				startind = std::min(len - 1, (tickerframe % len));
+				startind = std::max(startind, (s16)0);
+				startind = std::min(startind, (s16)(len / (s16)2));
+				if (startind + 1 >= len / 2) rev = true;
+				// if (startind == 0) rev = false;
+			}
+			else
+			{
+				startind = std::min(len - 1, len - (tickerframe % len) - 1);
+				if (len - (tickerframe % len) - 1 <= 0)
+				{
+					//tickerframe = 0;
+					rev = false;
+				}
+			}
+			
+
+			std::string sliced(original, startind, len);
+
+
+
+			drawString(sliced.c_str(), contentoffset + 2, ROW_HEIGHT * i + 2,
+				scrollpos + i == activeelement ? theme->col_text_lb_highlight : theme->col_text_lb,
+				width - contentoffset - 2 - SCROLLBAR_WIDTH - 2,
+				height - (ROW_HEIGHT * i + 4)
+			);
+		}
+		else {
+			drawString(elements.at(scrollpos + i).c_str(), contentoffset + 2, ROW_HEIGHT * i + 2,
+				scrollpos + i == activeelement ? theme->col_text_lb_highlight : theme->col_text_lb,
+				width - contentoffset - 2 - SCROLLBAR_WIDTH - 2,
+				height - (ROW_HEIGHT * i + 4));
+		}
 	}
+
 	
 	drawBorder(theme->col_outline);
 }

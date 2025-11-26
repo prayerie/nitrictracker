@@ -61,7 +61,7 @@ class ListBox: public Widget {
 		void clear(void);
 		void select(u16 idx, bool scroll=true); // set selected element
 		void highlight(s32 idx, bool scroll=true); // set highlighted element, <0 disables
-
+		void tickFrame(void);
 	protected:
 		void draw(void);
 		void scrollTo(u16 idx);
@@ -69,7 +69,8 @@ class ListBox: public Widget {
 		void calcScrollThingy(void);
 
 		void (*onChange)(u16);
-
+		bool rev = false;
+		u8 tickerframe;
 		u8 buttonstate;
 		u16 activeelement;
 		s32 highlightedelement;

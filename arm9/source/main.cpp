@@ -4030,9 +4030,11 @@ void handleButtons(u16 buttons, u16 buttonsheld)
 	*/
 #endif
 }
-
+u16 framee = 0;
 void VblankHandler(void)
 {
+	if (framee > 1024) framee = 0;
+	framee += 1;
 	// Check input
 	scanKeys();
 	u16 keysdown = keysDown() | (keysDownRepeat() & keys_that_are_repeated);
@@ -4044,6 +4046,13 @@ void VblankHandler(void)
 	if (sampledisplay != NULL && sampledisplay->getIsExposed())
 		sampledisplay->drawCursor();
 
+	if (fileselector != 0)
+	{
+		if (framee % 12 == 0)
+		{
+			fileselector->tickFrame();
+		}
+	}
 	if(keysdown & KEY_TOUCH)
 	{
 		gui->penDown(touch.px, touch.py);
