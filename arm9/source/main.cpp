@@ -436,14 +436,14 @@ void onKeypress(u8 note)
 	handleSampleChange(newsamp);
 
 	if (!inst->getSampleForNote(note)) return;
-	sampledisplay->startCursor(note); // don't call this in sampleChange as lbsamples doesn't play the note
+	sampledisplay->startCursor(1,note); // don't call this in sampleChange as lbsamples doesn't play the note
 }
 
 void onKeyrelease(void)
 {
 	// extracted into a function for pr153 compat
-	sampledisplay->eraseCursor();
-	sampledisplay->stopCursor(true);
+	sampledisplay->eraseCursor(0);
+	sampledisplay->stopCursor(0, true);
 }
 
 void handleNoteStroke(u8 note)
@@ -591,7 +591,7 @@ void handleSampleChange(const u16 newsample)
 
 	if(smp == NULL)
 	{
-		sampledisplay->setSample(NULL);
+		sampledisplay->setSample(NULL, 0, 255);
 		nssamplevolume->setValue(0);
 		nspanning->setValue(64);
 		nsrelnote->setValue(0);
@@ -601,7 +601,7 @@ void handleSampleChange(const u16 newsample)
 		return;
 	}
 
-	sampledisplay->setSample(smp);
+	sampledisplay->setSample(smp, newsample, lbinstruments->getidx());
 	sampledisplay->hideLoopPoints();
 	nssamplevolume->setValue( (smp->getVolume()+1)/4 );
 	nspanning->setValue(smp->getPanning()/2);
@@ -701,6 +701,72 @@ void updateTempoAndBpm(void)
 	nbtempo->setValue(song->getTempo());
 }
 
+
+int ticksSpeed;
+unsigned int lastTime;
+unsigned int timeCounted;
+int clockStopped;
+
+#define timers2ms(tlow,thigh)(tlow | (thigh<<16)) >> 5
+
+unsigned int getRealTicks(void)
+{
+	return timers2ms(TIMER2_DATA, TIMER3_DATA);
+}
+
+unsigned int getTicks(void)
+{
+	unsigned int t = ((getRealTicks() - lastTime)*ticksSpeed)/100;
+	if ((t > 0) || (-t < timeCounted)) {
+		timeCounted += t;
+	} else {
+		timeCounted = 0;
+	}
+	lastTime = getRealTicks();
+	return timeCounted;
+}
+
+
+
+
+
+void reStartRealTicks(void)
+{
+	TIMER2_DATA=0;
+	TIMER3_DATA=0;
+	TIMER2_CR=TIMER_DIV_1024 | TIMER_ENABLE;
+	TIMER3_CR=TIMER_CASCADE | TIMER_ENABLE;
+}
+
+void setTicksTo(unsigned int time)
+{
+	timeCounted = time;
+	lastTime = getRealTicks();
+}
+
+void reStartTicks(void)
+{
+	ticksSpeed = 60;
+	clockStopped = 0;
+	setTicksTo(0);
+}
+
+void cursorTimerHandler(void)
+{
+	if (sampledisplay != NULL)
+		sampledisplay->calcCursor(getTicks());
+}
+
+void startCursorTimer(void)
+{
+	TIMER1_DATA = TIMER_FREQ_64(60); // Call handler every frame
+	TIMER1_CR = TIMER_ENABLE | TIMER_IRQ_REQ | TIMER_DIV_64;
+	irqSet(IRQ_TIMER1, cursorTimerHandler);
+	irqEnable(IRQ_TIMER1);
+	reStartTicks();
+	reStartRealTicks();
+}
+
 void setSong(Song *newsong)
 {
 	song = newsong;
@@ -713,7 +779,7 @@ void setSong(Song *newsong)
 	pv->setSong(song);
 
 	// Clear sample display
-	sampledisplay->setSample(0);
+	sampledisplay->setSample(0, 0, NO_INSTRUMENT);
 
 	// Clear action buffer
 	action_buffer->clear();
@@ -773,7 +839,7 @@ void setSong(Song *newsong)
 
 	inst = song->getInstrument(state->instrument);
 	if(inst != NULL) {
-		sampledisplay->setSample(inst->getSample(state->sample));
+		sampledisplay->setSample(inst->getSample(state->sample), state->sample, state->instrument);
 	}
 
 
@@ -1385,7 +1451,7 @@ void handleStopCursor(void)
 {
 	if (sampledisplay==0) return;
 
-	sampledisplay->stopCursor(false);
+	//sampledisplay->stopCursor(false);
 }
 
 #ifdef MIDI
@@ -1685,7 +1751,7 @@ void zapInstruments(void)
 	}
 
 	// Clear sample display
-	sampledisplay->setSample(0);
+	sampledisplay->setSample(0, 0, NO_INSTRUMENT);
 
 	CommandSetSong(song);
 	updateMemoryState(true);
@@ -2621,7 +2687,7 @@ void sample_del_selection(void)
 
 	DC_FlushAll();
 
-	sampledisplay->setSample(smp);
+	sampledisplay->setSample(smp, state->sample, state->instrument);
 }
 
 void sample_fade_in(void)
@@ -2642,7 +2708,7 @@ void sample_fade_in(void)
 
 	DC_FlushAll();
 
-	sampledisplay->setSample(smp);
+	sampledisplay->setSample(smp, state->sample, state->instrument);
 }
 
 void sample_fade_out(void)
@@ -2663,7 +2729,7 @@ void sample_fade_out(void)
 
 	DC_FlushAll();
 
-	sampledisplay->setSample(smp);
+	sampledisplay->setSample(smp, state->sample, state->instrument);
 }
 
 void sample_reverse(void)
@@ -2687,7 +2753,7 @@ void sample_reverse(void)
 
 	DC_FlushAll();
 
-	sampledisplay->setSample(smp);
+	sampledisplay->setSample(smp, state->sample, state->instrument);
 }
 
 void sampleTabBoxChage(u8 tab)
@@ -3810,7 +3876,7 @@ void VblankHandler(void)
 	touchRead(&touch);
 
 
-	if (sampledisplay != NULL && sampledisplay->getIsExposed())
+	if (sampledisplay != NULL)
 		sampledisplay->drawCursor();
 
 	if(keysdown & KEY_TOUCH)
@@ -3998,7 +4064,7 @@ void applySettings(void)
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
 #ifdef GURU
-	defaultExceptionHandler();
+	//defaultExceptionHandler();
 #endif
 
 	// Hide everything
@@ -4118,9 +4184,12 @@ int main(int argc, char **argv) {
 	CommandSetSong(song);
 
 	setupGUI(fat_success);
-	u32 *pcursor = (u32*)ntxm_ccalloc(1, sizeof(u32));
-	CommandSetCursorPosPtr(pcursor);
-	sampledisplay->setCursorPosPtr((u32*)memUncached(pcursor));
+
+	startCursorTimer();
+	// u32 *pcursor = (u32*)ntxm_ccalloc(1, sizeof(u32));
+	SampleCursor *scursors = (SampleCursor*)ntxm_ccalloc(MAX_CHANNELS, sizeof(SampleCursor));
+	CommandSetCursorPosPtr(scursors);
+	sampledisplay->setCursorPosPtr((SampleCursor*)memUncached(scursors));
 	action_buffer->register_change_callback({&actionBufferChangeCallback});
 
 	applySettings();

@@ -37,16 +37,19 @@ using namespace tobkit;
 // Constructor sets base variables
 SampleDisplay::SampleDisplay(u8 _x, u8 _y, u8 _width, u8 _height, u16 **_vram, Sample *_smp)
 	:Widget(_x, _y, _width, _height, _vram),
-	smp(_smp),
+	smp(_smp), smpidx(0), instidx(0),
 	selstart(0), selend(0), selection_exists(false), pen_is_down(false), active(false), loop_points_visible(false),
 	pen_on_loop_start_point(false), pen_on_loop_end_point(false),
 	pen_on_zoom_in(false), pen_on_zoom_out(false),
 	pen_on_scroll_left(false), pen_on_scroll_right(false), pen_on_scrollthingy(false), pen_on_scrollbar(false),
 	scrollthingypos(0), scrollthingywidth(width-2*SCROLLBUTTON_HEIGHT+2), pen_x_on_scrollthingy(0), zoom_level(0), scrollpos(0),
-	snap_to_zero_crossings(true), draw_mode(false)
+	snap_to_zero_crossings(true), draw_mode(false), lastmax(0), lastmin(0)
 {
 	for (int i = 0; i < DRAW_HEIGHT_S + 1; ++i) {
-		previous_cursor_pixels[i] = 0;
+		for (int chn = 0; chn < 16; ++chn)
+		{
+			previous_cursor_pixels[chn][i] = 0;
+		}
 	}
 }
 
@@ -57,7 +60,7 @@ SampleDisplay::~SampleDisplay(void)
 
 void SampleDisplay::setTheme(Theme *theme_, u16 bgcolor_)
 {
-	last_cursor_draw_x = 0;
+	//last_cursor_draw_x = 0;
 	Widget::setTheme(theme_, bgcolor_);
 }
 
@@ -234,82 +237,179 @@ void SampleDisplay::penMove(u8 px, u8 py)
 	draw();
 }
 
-void SampleDisplay::setCursorPosPtr(u32 *cursorpos_)
+void SampleDisplay::setCursorPosPtr(SampleCursor *cursorpos_)
 {
 	cursorpos = cursorpos_;
 }
 
-void SampleDisplay::eraseCursor(void)
+void SampleDisplay::eraseCursor(u8 chn)
 {
-	if (last_cursor_draw_x != 0)
-		for (int i = 0; i < DRAW_HEIGHT + 1; ++i) {
-			*(*vram + SCREEN_WIDTH * (y + i + 1) + x + last_cursor_draw_x) = previous_cursor_pixels[i];
+	if (last_cursor_draw_x[chn] != 0)
+		{
+			drawWaveAt(last_cursor_draw_x[chn]);
+			drawControls();
 		}
+		// for (int i = 0; i < DRAW_HEIGHT + 1; ++i) {
+		// 	*(*vram + SCREEN_WIDTH * (y + i + 1) + x + last_cursor_draw_x[chn]) = previous_cursor_pixels[chn][i];
+		// }
 }
 
+void SampleDisplay::calcCursor(u32 n_ticks)
+{
+	if (smp == 0) return;
+	for (int chn = 0; chn < 16; ++chn)
+	{
+
+		if (cursorpos[chn].instidx == 255 || !(cursorpos[chn].active)) continue;
+		SampleCursor *playingNote = &cursorpos[chn];
+		\
+		const u32 real_n_ticks = 10;
+
+		playingNote->last_ticks = n_ticks;
+		const u8 looptype = smp->getLoop();
+
+
+		const u64 loopstart = (u64)(smp->getLoopStart()) << 32;
+		const u64 looplen = (u64)(smp->getLoopLength()) << 32;
+		const u64 nsamps = (u64)(smp->getNSamples()) << 32;
+		const u64 loopend = loopstart + looplen;
+
+		u8& looprev = playingNote->loopreversing;
+		u64& playpos = playingNote->playbackpos;
+
+		//if (n_ticks == 0) return;
+
+		const u64 step = (((u64)(smp->getPlaybackFreq(playingNote->note)) * (u64)real_n_ticks) << 32) / 600; // timer
+
+		if (looprev) {
+			if (step > playpos) {
+				playpos = loopstart + step - playpos;
+				looprev = false;
+			}
+			else
+				playpos -= step;
+		}
+		else
+			(*playingNote).playbackpos += step;
+
+		if (looptype == FORWARD_LOOP && playpos >= loopend)
+			playpos = loopstart + playpos - loopend;
+		else if (looptype == PING_PONG_LOOP) {
+			if (looprev && playpos <= loopstart) {
+				playpos = 2 * loopstart - playpos;
+				looprev = false;
+			}
+			else if (!looprev && playpos >= loopend) {
+				playpos = 2 * loopend - playpos;
+				looprev = true;
+			}
+		}
+		else if (looptype == NO_LOOP && playpos >= nsamps) {
+			//stopCursor(chn, true);
+			continue;
+		}
+
+		if (looptype != NO_LOOP && looplen <= step && playpos > loopstart)
+			if (looptype == PING_PONG_LOOP && looprev)
+				playpos = loopend - (step % looplen);
+			else
+				playpos = loopstart + (step % looplen);
+
+	}
+
+
+	
+}
 void SampleDisplay::drawCursor(void)
 {
-	if (smp==0 || cursorpos==0) return;
-	u32 position_samps = *cursorpos;
-	
-	if (position_samps != 0) {
-		u32 drawpix = sampleToPixel((position_samps));
-		// draw the previous pixels on the previous cursor pos
-		eraseCursor();
-		if (drawpix < x + width) {
-			s32 draw_at_x = sampleToPixel(position_samps);
+	if (smp == 0 || !isExposed()) return;
 
-			u16 col_cursor = theme->col_env_sustain;
+	for (int chn = 0; chn < 16; ++chn)
+	{
+		SampleCursor playingNote = cursorpos[chn];
 
-			if (!playing)
-				return;
-				
-			// backup pixels that were underneath the cursor
-			// we could just draw one line of the waveform, but that
-			// doesn't account for the zoom buttons or loop handles
-			if (last_cursor_draw_x != (u32)draw_at_x) {
-				last_cursor_draw_x = (u32)draw_at_x;
-				for(int i=0;i<DRAW_HEIGHT + 1;++i)
-					previous_cursor_pixels[i] = *(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x);
-			}
+		if (!playingNote.active || playingNote.playbackpos == 0)
+		{
+			eraseCursor(chn);
+		}
+		
+		if (!playingNote.active  || playingNote.instidx != instidx) continue;
 
-			// ...and finally, draw the cursor itself
-			if (!(draw_at_x >= width + 1) && draw_at_x != 0) {
-				for(int i=0;i<DRAW_HEIGHT+1;++i) {
-					*(*vram+SCREEN_WIDTH*(y+i+1)+x+draw_at_x) = col_cursor;
+
+		u32 position_samps = playingNote.playbackpos >> 32;
+		u32 drawpidx = sampleToPixel((position_samps));
+		if (position_samps != 0) {
+			u32 drawpix = sampleToPixel((position_samps));
+			// draw the previous pixels on the previous cursor pos
+			eraseCursor(chn);
+			if (drawpix < x + width - 4) {
+				s32 draw_at_x = sampleToPixel(position_samps);
+				u16 col_cursor = theme->col_env_sustain;
+
+				if (!playing[chn])
+					continue;
+
+				// backup pixels that were underneath the cursor
+				// we could just draw one line of the waveform, but that
+				// doesn't account for the zoom buttons or loop handles
+				if (last_cursor_draw_x[chn] != (u32)draw_at_x) {
+					last_cursor_draw_x[chn] = (u32)draw_at_x;
+				}
+
+				// ...and finally, draw the cursor itself
+				if (!(draw_at_x >= width + 1) && draw_at_x != 0) {
+					for (int i = 0;i < DRAW_HEIGHT + 1;++i) {
+						*(*vram + SCREEN_WIDTH * (y + i + 1) + x + draw_at_x) = col_cursor;
+					}
 				}
 			}
 		}
+
 	}
 }
 
-void SampleDisplay::stopCursor(bool full_redraw = false)  {
-	playing = false;
-	if (full_redraw && last_cursor_draw_x != 0) { // don't redraw if we never drew the cursor
+void SampleDisplay::stopCursor(u8 chn, bool full_redraw = false)  {
+	for (int chfn = 0; chfn < 16; ++chfn)
+	{
+		last_cursor_draw_x[chfn] = 0;
+	}
+	if (full_redraw) draw();
+	return;
+
+	if (full_redraw && last_cursor_draw_x[chn] != 0) { // don't redraw if we never drew the cursor
 		draw();
-		last_cursor_draw_x = 0;
+		last_cursor_draw_x[chn] = 0;
 	}
 }
 
 // commented out sections facilitating for 09xx command support
 // if/when it is added
-void SampleDisplay::startCursor(u8 note/*, u32 offs_raw*/)  {
+void SampleDisplay::startCursor(u8 chn, u8 note/*, u32 offs_raw*/)  {
+	for (int chfn = 0; chfn < 16; ++chfn)
+	{
+		playing[chfn] = true;
+	}
+	stopCursor(chn, true); // stop previous cursor if necessary
+
+	return;
 	// setOffsetRaw(offs_raw);
 	if (smp == NULL) return;
 
-	stopCursor(true); // stop previous cursor if necessary
-	playing = true;
+	playing[chn] = true;
 }
 
-void SampleDisplay::setSample(Sample *_smp)
+void SampleDisplay::setSample(Sample *_smp, u8 _smpidx, u8 _instidx)
 {
-	last_cursor_draw_x = 0;
+	smpidx = _smpidx;
+	instidx = _instidx;
+
+	last_cursor_draw_x[0] = 0;
 	selection_exists = false;
 	selstart = selend = 0;
 	if(_smp == 0) {
 		loop_points_visible = false;
 	}
-	if (_smp == smp) return;
+	// if (_smp == smp) return;
 	smp = _smp;
 	draw();
 }
@@ -461,6 +561,270 @@ long SampleDisplay::find_zero_crossing_near(long pos)
 	}
 }
 
+void SampleDisplay::drawControls(void)
+{
+	//
+	// Loop Points
+	//
+	if( (loop_points_visible) && (smp->getLoop() != NO_LOOP) && !draw_mode )
+	{
+		s32 loop_start_pos = sampleToPixel(smp->getLoopStart());
+		s32 loop_end_pos   = sampleToPixel(smp->getLoopStart() + smp->getLoopLength());
+
+		// Loop Start
+
+		if( (loop_start_pos >= 0) && (loop_start_pos <= width-2) ) {
+			// Line
+			for(u8 i=1; i<DRAW_HEIGHT+1; ++i)
+				*(*vram+SCREEN_WIDTH*(y+i)+x+loop_start_pos) = theme->col_loop;
+
+			/* unused
+			u8 cutoff = 0;
+			if(loop_start_pos < 1+LOOP_TRIANGLE_SIZE)
+				cutoff = 1+LOOP_TRIANGLE_SIZE - loop_start_pos;
+			*/
+
+			// Left Triangle
+			if(loop_start_pos > 1 + LOOP_TRIANGLE_SIZE)
+			{
+				drawHLine(loop_start_pos-2, DRAW_HEIGHT+1-LOOP_TRIANGLE_SIZE, 2, theme->col_outline);
+
+				for(u8 i=0; i<LOOP_TRIANGLE_SIZE-2; ++i)
+				{
+					drawHLine(loop_start_pos-i-2, DRAW_HEIGHT+2-LOOP_TRIANGLE_SIZE+i, i+2, theme->col_loop);
+					drawPixel(loop_start_pos-i-3, DRAW_HEIGHT+2-LOOP_TRIANGLE_SIZE+i, theme->col_outline);
+				}
+
+				drawHLine(loop_start_pos-LOOP_TRIANGLE_SIZE+1, DRAW_HEIGHT, LOOP_TRIANGLE_SIZE-1,
+					theme->col_loop);
+				drawPixel(loop_start_pos-LOOP_TRIANGLE_SIZE, DRAW_HEIGHT, theme->col_outline);
+			}
+
+			// Right Triangle
+			if(loop_start_pos < width - 2 - LOOP_TRIANGLE_SIZE)
+			{
+				drawHLine(loop_start_pos+1, DRAW_HEIGHT+1-LOOP_TRIANGLE_SIZE, 2, theme->col_outline);
+				for(u8 i=0; i<LOOP_TRIANGLE_SIZE-2; ++i) {
+					drawHLine(loop_start_pos+1, DRAW_HEIGHT+2-LOOP_TRIANGLE_SIZE+i, 2+i, theme->col_loop);
+					drawPixel(loop_start_pos+3+i, DRAW_HEIGHT+2-LOOP_TRIANGLE_SIZE+i, theme->col_outline);
+				}
+				drawHLine(loop_start_pos+1, DRAW_HEIGHT-LOOP_TRIANGLE_SIZE+LOOP_TRIANGLE_SIZE, LOOP_TRIANGLE_SIZE-1,
+					theme->col_loop);
+				drawPixel(loop_start_pos+LOOP_TRIANGLE_SIZE, DRAW_HEIGHT, theme->col_outline);
+			}
+		}
+
+		// Loop End
+
+		if( (loop_end_pos >= 0) && (loop_end_pos <= width-2) ) {
+			// Line
+			for(u8 i=1; i<DRAW_HEIGHT+1; ++i)
+				*(*vram+SCREEN_WIDTH*(y+i)+x+loop_end_pos) = theme->col_loop;
+
+			// Left Triangle
+			if(loop_end_pos > 1 + LOOP_TRIANGLE_SIZE)
+			{
+				drawHLine(loop_end_pos-LOOP_TRIANGLE_SIZE+1, 1, LOOP_TRIANGLE_SIZE-1,
+					theme->col_loop);
+				drawPixel(loop_end_pos-LOOP_TRIANGLE_SIZE, 1, theme->col_outline);
+
+				for(u8 i=0; i<LOOP_TRIANGLE_SIZE-2; ++i)
+				{
+					drawHLine(loop_end_pos-LOOP_TRIANGLE_SIZE+i+1, 2+i, LOOP_TRIANGLE_SIZE-i-1, theme->col_loop);
+					drawPixel(loop_end_pos-1-LOOP_TRIANGLE_SIZE+i+1, 2+i, theme->col_outline);
+				}
+
+				drawHLine(loop_end_pos-2, LOOP_TRIANGLE_SIZE, 2, theme->col_outline);
+			}
+
+			// Right Triangle
+			if(loop_end_pos < width-1-LOOP_TRIANGLE_SIZE)
+			{
+				drawHLine(loop_end_pos+1, 1, LOOP_TRIANGLE_SIZE-1, theme->col_loop);
+				drawPixel(loop_end_pos+LOOP_TRIANGLE_SIZE, 1, theme->col_outline);
+
+				for(u8 i=0; i<LOOP_TRIANGLE_SIZE-2; ++i)
+				{
+					drawHLine(loop_end_pos+1, 2+i, LOOP_TRIANGLE_SIZE-i-1, theme->col_loop);
+					drawPixel(loop_end_pos+LOOP_TRIANGLE_SIZE-i, 2+i, theme->col_outline);
+				}
+
+				drawHLine(loop_end_pos+1, LOOP_TRIANGLE_SIZE, 2, theme->col_outline);
+			}
+		}
+	}
+
+	//
+	// Zoom buttons
+	//
+
+	if(!draw_mode) {
+		// Outlines
+		drawHLine(2, 1, 7, theme->col_light_bg);
+		drawHLine(10, 1, 7, theme->col_light_bg);
+
+		drawHLine(2, 9, 7, theme->col_light_bg);
+		drawHLine(10, 9, 7, theme->col_light_bg);
+
+		drawVLine(1, 2, 7, theme->col_light_bg);
+		drawVLine(9, 2, 7, theme->col_light_bg);
+		drawVLine(17, 2, 7, theme->col_light_bg);
+
+		// +
+		if(pen_on_zoom_in) {
+			drawFullBox(2, 2, 7, 7, theme->col_light_bg);
+			drawHLine(3, 5, 5, theme->col_smp_bg);
+			drawVLine(5, 3, 5, theme->col_smp_bg);
+		} else {
+			drawHLine(3, 5, 5, theme->col_light_bg);
+			drawVLine(5, 3, 5, theme->col_light_bg);
+		}
+
+		// -
+		if(pen_on_zoom_out) {
+			drawFullBox(10, 2, 7, 7, theme->col_light_bg);
+			drawHLine(11, 5, 5, theme->col_smp_bg);
+		} else {
+			drawHLine(11, 5, 5, theme->col_light_bg);
+		}
+	}
+}
+
+void SampleDisplay::drawWaveAt(u32 i)
+{
+    if ((smp == 0) || (smp->getNSamples() == 0)) {
+        drawFullBox(1, 1, width - 2, height - 2, theme->col_smp_bg);
+        return;
+    }
+
+    if (i > width - 1 || i < 1) return;
+
+    s32 selleft = 0;
+    s32 selright = 0;
+    bool draw_selection = selection_exists;
+
+    if (draw_selection) {
+        selleft = sampleToPixel(std::min(selstart, selend));
+        selright = sampleToPixel(std::max(selstart, selend));
+
+        if (selleft < 1) selleft = 1;
+        else if (selleft > (width - 1)) draw_selection = false;
+
+        if (selright > width - 1) selright = width - 1;
+        else if (selright < 1) draw_selection = false;
+    }
+
+    int32 step = divf32(inttof32(smp->getNSamples() >> zoom_level), inttof32(width - 2));
+
+    u32 renderwindow = (u32)std::max(1, std::min(25, (int)ceil_f32toint(step)));
+
+    u16 middle = (DRAW_HEIGHT + 2) / 2;
+    u16 top = (DRAW_HEIGHT + 2);
+
+    s32 lastmax = 0, lastmin = 0;
+
+    if (smp->is16bit() == true) {
+        s16 *base = (s16*)smp->getData() + pixelToSample(0);
+
+        if (i > 1) {
+            int32 prev_pos = step * (i - 2);
+            s16 *prev_data = &(base[f32toint(prev_pos)]);
+
+            s32 prev_maxsmp = -32767, prev_minsmp = 32767;
+            for (u32 j = 0; j < renderwindow; ++j) {
+                if (prev_data[j] > prev_maxsmp) prev_maxsmp = prev_data[j];
+                if (prev_data[j] < prev_minsmp) prev_minsmp = prev_data[j];
+            }
+
+            lastmax = div32((DRAW_HEIGHT + 2) * prev_maxsmp, 2 * 32767);
+            lastmin = div32((DRAW_HEIGHT + 2) * prev_minsmp, 2 * 32767);
+        }
+
+        bool draw_selection_here = (draw_selection && (s32)i >= selleft && (s32)i < selright);
+        u16 colortable_current = draw_selection_here ? theme->col_smp_waveform_sel : theme->col_smp_waveform;
+        u16 bg_current = draw_selection_here ? theme->col_smp_bg_sel : theme->col_smp_bg;
+
+        int32 pos = step * (i - 1);
+        s16 *data = &(base[f32toint(pos)]);
+
+        s32 maxsmp = -32767, minsmp = 32767;
+        for (u32 j = 0; j < renderwindow; ++j) {
+            if (data[j] > maxsmp) maxsmp = data[j];
+            if (data[j] < minsmp) minsmp = data[j];
+        }
+
+        s32 maxy = div32((DRAW_HEIGHT + 2) * maxsmp, 2 * 32767);
+        s32 miny = div32((DRAW_HEIGHT + 2) * minsmp, 2 * 32767);
+
+        if (i > 1) {
+            if (lastmin > maxy) maxy = lastmin;
+            if (lastmax < miny) miny = lastmax;
+        }
+
+        miny += middle;
+        maxy += middle;
+        if (miny > maxy) {
+            miny = middle;
+            maxy = middle;
+        }
+
+        s16 j;
+        for (j = 0; j < miny; ++j) (*vram)[SCREEN_WIDTH * (y + top - j) + x + i] = bg_current;
+        for (; j <= maxy; ++j) (*vram)[SCREEN_WIDTH * (y + top - j) + x + i] = colortable_current;
+        for (; j < top; ++j) (*vram)[SCREEN_WIDTH * (y + top - j) + x + i] = bg_current;
+
+    } else {
+        s8 *base = (s8*)smp->getData() + pixelToSample(0);
+
+        if (i > 1) {
+            int32 prev_pos = step * (i - 2);
+            s8 *prev_data = &(base[f32toint(prev_pos)]);
+
+            s8 prev_maxsmp = -127, prev_minsmp = 127;
+            for (u32 j = 0; j < renderwindow; ++j) {
+                if (prev_data[j] > prev_maxsmp) prev_maxsmp = prev_data[j];
+                if (prev_data[j] < prev_minsmp) prev_minsmp = prev_data[j];
+            }
+
+            lastmax = div32((DRAW_HEIGHT + 2) * prev_maxsmp, 2 * 127);
+            lastmin = div32((DRAW_HEIGHT + 2) * prev_minsmp, 2 * 127);
+        }
+
+        bool draw_selection_here = (draw_selection && (s32)i >= selleft && (s32)i < selright);
+        u16 colortable_current = draw_selection_here ? theme->col_smp_waveform_sel : theme->col_smp_waveform;
+        u16 bg_current = draw_selection_here ? theme->col_smp_bg_sel : theme->col_smp_bg;
+
+        int32 pos = step * (i - 1);
+        s8 *data = &(base[f32toint(pos)]);
+
+        s8 maxsmp = -127, minsmp = 127;
+        for (u32 j = 0; j < renderwindow; ++j) {
+            if (data[j] > maxsmp) maxsmp = data[j];
+            if (data[j] < minsmp) minsmp = data[j];
+        }
+
+        s8 maxy = div32((DRAW_HEIGHT + 2) * maxsmp, 2 * 127);
+        s8 miny = div32((DRAW_HEIGHT + 2) * minsmp, 2 * 127);
+
+        if (i > 1) {
+            if (lastmin > maxy) maxy = lastmin;
+            if (lastmax < miny) miny = lastmax;
+        }
+
+        miny += middle;
+        maxy += middle;
+        if (miny > maxy) {
+            miny = middle;
+            maxy = middle;
+        }
+
+        s16 j;
+        for (j = 0; j < miny; ++j) (*vram)[SCREEN_WIDTH * (y + top - j) + x + i] = bg_current;
+        for (; j <= maxy; ++j) (*vram)[SCREEN_WIDTH * (y + top - j) + x + i] = colortable_current;
+        for (; j < top; ++j) (*vram)[SCREEN_WIDTH * (y + top - j) + x + i] = bg_current;
+    }
+}
+
 void SampleDisplay::draw(void)
 {
 	if(!isExposed())
@@ -565,12 +929,12 @@ void SampleDisplay::draw(void)
 	int32 step = divf32(inttof32(smp->getNSamples() >> zoom_level), inttof32(width-2));
 	int32 pos = 0;
 
-	u32 renderwindow = (u32)std::max(1, std::min(100, (int) ceil_f32toint(step)));
+	u32 renderwindow = (u32)std::max(1, std::min(25, (int)ceil_f32toint(step)));
 
 	u16 middle = (DRAW_HEIGHT+2)/2;//-1;
 	u16 top = (DRAW_HEIGHT+2);
 
-	s32 lastmax=0, lastmin=0;
+	lastmax=0, lastmin=0;
 	if(smp->is16bit() == true) {
 
 		s16 *data;
