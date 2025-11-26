@@ -1393,7 +1393,7 @@ void startPlay(void)
 
 	state->playing = true;
 	state->pause = false;
-
+	sampledisplay->startCursor(1,1);
 	buttonplay->hide();
 	buttonpause->show();
 }
@@ -1431,7 +1431,8 @@ void stopPlay(void)
 	state->setPlaybackRow(0);
 
 	stop();
-
+	sampledisplay->eraseCursor(0);
+	sampledisplay->stopCursor(0, true);
 	buttonpause->hide();
 	buttonplay->show();
 }
@@ -1843,7 +1844,7 @@ void zapUnusedInstruments(void) {
 
 		lbinstruments->set(i, "");
 		if (lbinstruments->getidx() == i) {
-			sampledisplay->setSample(NULL);
+			sampledisplay->setSample(NULL, 0, 255);
 			handleSampleChange(0);
 			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
 				lbsamples->set(i, "");
@@ -1861,7 +1862,7 @@ void zapCurrentInstrument(void) {
 	PrintFreeMem();
 	u8 inst = lbinstruments->getidx();
 	song->zapInstrument(inst);
-	sampledisplay->setSample(NULL);
+	sampledisplay->setSample(NULL, 0, 255);
 	handleSampleChange(0);
 	DC_FlushAll();
 	deleteMessageBox();
@@ -4007,7 +4008,7 @@ void handleButtons(u16 buttons, u16 buttonsheld)
 {
 	u16 ptnlen = song->getPatternLength(song->getPotEntry(state->potpos));
 
-	if(!(buttonsheld & mykey_R))
+	if(!(buttonsheld & mykey_R) && !(buttonsheld & mykey_Y))
 	{
 		if(buttons & mykey_UP)
 		{
@@ -4044,6 +4045,40 @@ void handleButtons(u16 buttons, u16 buttonsheld)
 
 			pv->updateSelection();
 			redraw_main_requested = true;
+		}
+	}
+
+	if(!(buttonsheld & mykey_R) && (buttonsheld & mykey_Y))
+	{
+		int move_by = (buttonsheld & mykey_B) ? 4 : 1;
+		bool file_sel_visible = fileselector->is_Exposed();
+		ListBox *target = file_sel_visible ? fileselector : lbinstruments;
+		u16 cur_i = target->getidx();
+		u16 new_i = cur_i;
+		if(buttons & mykey_DOWN) {
+			u8 max = file_sel_visible ? fileselector->getFileCount() : 0x7f;
+			new_i = cur_i + move_by >= max ? max : cur_i + move_by;
+			target->select(new_i);
+			File *file_at_cursor = fileselector->getSelectedFile();
+			if (file_sel_visible) {
+				File *file_at_cursor = fileselector->getSelectedFile();
+				if (file_at_cursor != NULL)
+					handleFileChange(*file_at_cursor);
+			} else {
+				handleInstChange(new_i);
+			}
+		}
+
+		if(buttons & mykey_UP) {
+			new_i = cur_i - move_by <= 0 ? 0 : cur_i - move_by;
+			target->select(new_i);
+			if (file_sel_visible) {
+				File *file_at_cursor = fileselector->getSelectedFile();
+				if (file_at_cursor != NULL)
+					handleFileChange(*file_at_cursor);
+			} else {
+				handleInstChange(new_i);
+			}
 		}
 	}
 
@@ -4299,6 +4334,20 @@ void applySettings(void)
 	}
 
 	fileselector->pleaseDraw();
+}
+
+void move_inst_to_top(void)
+{
+	handleInstChange(0);
+	lbinstruments->select(0);
+}
+
+void move_filebrowser_to_top(void)
+{
+	fileselector->select(0);
+	File *file_at_cursor = fileselector->getSelectedFile();
+	if (file_at_cursor != NULL)
+		handleFileChange(*file_at_cursor);
 }
 
 //---------------------------------------------------------------------------------

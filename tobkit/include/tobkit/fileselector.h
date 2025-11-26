@@ -49,7 +49,7 @@ class FileSelector: public ListBox {
 
 		// File list invalidation
 		void invalidateFileList(void);
-
+		u16 getFileCount(void);
 		// Sets the file select callback
 		void registerFileSelectCallback(void (*onFileSelect_)(File));
 		
@@ -67,7 +67,7 @@ class FileSelector: public ListBox {
 	
 		// Get current dir
 		std::string getDir(void);
-		
+		bool is_Exposed(void) { return isExposed(); }
 		// Set current dir
 		void setDir(std::string dir);
 	

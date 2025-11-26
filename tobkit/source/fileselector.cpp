@@ -57,6 +57,11 @@ void FileSelector::invalidateFileList(void) {
 	filelist_refresh = true;
 }
 
+u16 FileSelector::getFileCount(void)
+{
+	return std::size(filelist);
+}
+
 // Calls fileselect callback or changes the directory
 void FileSelector::penDown(u8 px, u8 py)
 {

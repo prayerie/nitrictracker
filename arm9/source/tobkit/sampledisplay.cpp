@@ -333,7 +333,11 @@ void SampleDisplay::drawCursor(void)
 			eraseCursor(chn);
 		}
 		
-		if (!playingNote.active  || playingNote.instidx != instidx) continue;
+		if (!playingNote.active  || playingNote.instidx != instidx || playingNote.smpidx != smpidx)
+		{
+			eraseCursor(chn);
+			continue;
+		}
 
 
 		u32 position_samps = playingNote.playbackpos >> 32;

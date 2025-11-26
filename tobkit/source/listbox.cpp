@@ -387,7 +387,7 @@ void ListBox::draw(void)
 		contentoffset = 0;
 	}
 	char debugtext[256] = { 0 };
-	snprintf(debugtext, 200, "ticker=%u\n", tickerframe);
+
 	nocashMessage(debugtext);
 	// Content
 	for (i = 0;(i < height / ROW_HEIGHT) && (scrollpos + i < elements.size());++i) {
