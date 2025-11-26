@@ -98,6 +98,8 @@ using namespace tobkit;
 #include "sampleedit_reverse_raw.h"
 #include "sampleedit_record_raw.h"
 #include "sampleedit_normalize_raw.h"
+#include "sampleedit_lpf_raw.h"
+#include "sampleedit_hpf_raw.h"
 #include "sampleedit_draw_raw.h"
 #include "sampleedit_draw_small_raw.h"
 
@@ -188,9 +190,9 @@ GUI *gui;
 	NumberSlider *nssamplevolume, *nsfinetune, *nspanning;
 	NumberSliderRelNote *nsrelnote;
 
-	Label *labelsampleedit_select, *labelsampleedit_edit, *labelsampleedit_record;
+	Label *labelsampleedit_select, *labelsampleedit_edit, *labelsampleedit_record, *labelsampleedit_filter;
 	BitButton *buttonsmpfadein, *buttonsmpfadeout, *buttonsmpselall, *buttonsmpselnone, *buttonsmpseldel,
-		*buttonsmpreverse, *buttonrecord, *buttonsmpnormalize, *buttonsmptrim;
+		*buttonsmpreverse, *buttonrecord, *buttonsmpnormalize, *buttonsmptrim, * buttonsmplpf, * buttonsmphpf;
 
 	GroupBox *gbsampleloop;
 	RadioButton::RadioButtonGroup *rbg_sampleloop;
@@ -2554,6 +2556,46 @@ void sample_show_normalize_window(void)
 	normalizeBox->reveal();
 }
 
+void handleLowpassOk(void)
+{
+	u32 cutoff = lowpassBox->getValue();
+
+	Sample* sample = song->getInstrument(state->instrument)->getSample(state->sample);
+
+	u32 startsample, endsample;
+	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
+	if (!sel_exists)
+	{
+		startsample = 0;
+		endsample = sample->getNSamples() - 1;
+	}
+
+	sample->lowpass(startsample, endsample, cutoff);
+
+	gui->unregisterOverlayWidget();
+	delete lowpassBox;
+	redrawSubScreen();
+}
+
+void handleLowpassCancel(void)
+{
+	gui->unregisterOverlayWidget();
+	delete lowpassBox;
+	redrawSubScreen();
+}
+
+void sample_show_lowpass_window(void)
+{
+	Instrument* inst = song->getInstrument(state->instrument);
+	if (!inst) return;
+	Sample* smp = inst->getSample(state->sample);
+	if (!smp) return;
+
+	lowpassBox = new LowpassBox(&sub_vram, handleLowpassOk, handleLowpassCancel);
+	gui->registerOverlayWidget(lowpassBox, 0, SUB_SCREEN);
+	lowpassBox->reveal();
+}
+
 void swapControls(Handedness handedness)
 {
 	if(handedness == LEFT_HANDED)
@@ -3480,53 +3522,108 @@ void setupGUI(bool dldi_enabled)
 
 	// <Sample editing>
 		labelsampleedit_record = new Label(18, 99, 21, 30, &sub_vram, true);
-		labelsampleedit_record->setCaption("rec");
+	labelsampleedit_record->setCaption("rec");
 
-		buttonrecord = new BitButton(20, 110, 17, 17, &sub_vram, sampleedit_record_raw);
-		buttonrecord->registerPushCallback(handleRecordSample);
+	buttonrecord = new BitButton(20, 110, 17, 17, &sub_vram, sampleedit_record_raw);
+	buttonrecord->registerPushCallback(handleRecordSample);
 
-		labelsampleedit_select = new Label(38, 99, 39, 30, &sub_vram, true);
-		labelsampleedit_select->setCaption("select");
+	labelsampleedit_select = new Label(38, 99, 21, 48, &sub_vram, true);
+	labelsampleedit_select->setCaption("sel");
 
-		buttonsmpselall = new BitButton(40, 110, 17, 17, &sub_vram, sampleedit_all_raw);
-		buttonsmpselall->registerPushCallback(sample_select_all);
+	buttonsmpselall = new BitButton(40, 110, 17, 17, &sub_vram, sampleedit_all_raw);
+	buttonsmpselall->registerPushCallback(sample_show_lowpass_window);
 
-		buttonsmpselnone = new BitButton(58, 110, 17, 17, &sub_vram, sampleedit_none_raw);
-		buttonsmpselnone->registerPushCallback(sample_clear_selection);
+	buttonsmpselnone = new BitButton(40, 128, 17, 17, &sub_vram, sampleedit_none_raw);
+	buttonsmpselnone->registerPushCallback(sample_clear_selection);
 
-		labelsampleedit_edit = new Label(76, 99, 57, 48, &sub_vram, true);
-		labelsampleedit_edit->setCaption("edit");
+	labelsampleedit_edit = new Label(58, 99, 57, 48, &sub_vram, true);
+	labelsampleedit_edit->setCaption("edit");
 
-		buttonsmpfadein = new BitButton(78, 110, 17, 17, &sub_vram, sampleedit_fadein_raw);
-		buttonsmpfadein->registerPushCallback(sample_fade_in);
+	buttonsmpfadein = new BitButton(60, 110, 17, 17, &sub_vram, sampleedit_fadein_raw);
+	buttonsmpfadein->registerPushCallback(sample_fade_in);
 
-		buttonsmpfadeout = new BitButton(96, 110, 17, 17, &sub_vram, sampleedit_fadeout_raw);
-		buttonsmpfadeout->registerPushCallback(sample_fade_out);
+	buttonsmpfadeout = new BitButton(78, 110, 17, 17, &sub_vram, sampleedit_fadeout_raw);
+	buttonsmpfadeout->registerPushCallback(sample_fade_out);
 
-		buttonsmpreverse = new BitButton(78, 128, 17, 17, &sub_vram, sampleedit_reverse_raw);
-		buttonsmpreverse->registerPushCallback(sample_reverse);
+	buttonsmpreverse = new BitButton(60, 128, 17, 17, &sub_vram, sampleedit_reverse_raw);
+	buttonsmpreverse->registerPushCallback(sample_reverse);
 
-		buttonsmpseldel = new BitButton(96, 128, 17, 17, &sub_vram, sampleedit_del_raw);
-		buttonsmpseldel->registerPushCallback(sample_del_selection);
+	buttonsmpseldel = new BitButton(78, 128, 17, 17, &sub_vram, sampleedit_del_raw);
+	buttonsmpseldel->registerPushCallback(sample_del_selection);
 
-		buttonsmptrim = new BitButton(114, 128, 17, 17, &sub_vram, sampleedit_trim_raw);
-		buttonsmptrim->registerPushCallback(sample_crop_selection);
+		// buttonsmptrim = new BitButton(114, 128, 17, 17, &sub_vram, sampleedit_trim_raw);
+		// buttonsmptrim->registerPushCallback(sample_crop_selection);
+	buttonsmptrim = new BitButton(96, 128, 17, 17, &sub_vram, sampleedit_trim_raw);
+	buttonsmptrim->registerPushCallback(sample_crop_selection);
+	buttonsmpnormalize = new BitButton(96, 110, 17, 17, &sub_vram, sampleedit_normalize_raw);
+	buttonsmpnormalize->registerPushCallback(sample_show_normalize_window);
 
-		buttonsmpnormalize = new BitButton(114, 110, 17, 17, &sub_vram, sampleedit_normalize_raw);
-		buttonsmpnormalize->registerPushCallback(sample_show_normalize_window);
+	labelsampleedit_filter = new Label(114, 99, 21, 48, &sub_vram, true);
+	labelsampleedit_filter->setCaption("flt");
 
-		sampletabbox->registerWidget(buttonrecord, 0, 0);
-		sampletabbox->registerWidget(buttonsmpselall, 0, 0);
-		sampletabbox->registerWidget(buttonsmpselnone, 0, 0);
-		sampletabbox->registerWidget(buttonsmpseldel, 0, 0);
-		sampletabbox->registerWidget(buttonsmptrim, 0, 0);
-		sampletabbox->registerWidget(buttonsmpfadein, 0, 0);
-		sampletabbox->registerWidget(buttonsmpfadeout, 0, 0);
-		sampletabbox->registerWidget(buttonsmpreverse, 0, 0);
-		sampletabbox->registerWidget(buttonsmpnormalize, 0, 0);
-		sampletabbox->registerWidget(labelsampleedit_edit, 0, 0);
-		sampletabbox->registerWidget(labelsampleedit_select, 0, 0);
-		sampletabbox->registerWidget(labelsampleedit_record, 0, 0);
+	buttonsmplpf = new BitButton(116, 110, 17, 17, &sub_vram, sampleedit_lpf_raw);
+	buttonsmplpf->registerPushCallback(sample_show_lowpass_window);
+	buttonsmphpf = new BitButton(116, 128, 17, 17, &sub_vram, sampleedit_hpf_raw);
+	buttonsmphpf->registerPushCallback(sample_crop_selection);
+	sampletabbox->registerWidget(buttonrecord, 0, 0);
+	sampletabbox->registerWidget(buttonsmpselall, 0, 0);
+	sampletabbox->registerWidget(buttonsmpselnone, 0, 0);
+	sampletabbox->registerWidget(buttonsmpseldel, 0, 0);
+	sampletabbox->registerWidget(buttonsmptrim, 0, 0);
+	sampletabbox->registerWidget(buttonsmplpf, 0, 0);
+	sampletabbox->registerWidget(buttonsmphpf, 0, 0);
+
+	sampletabbox->registerWidget(buttonsmpfadein, 0, 0);
+	sampletabbox->registerWidget(buttonsmpfadeout, 0, 0);
+	sampletabbox->registerWidget(buttonsmpreverse, 0, 0);
+	sampletabbox->registerWidget(buttonsmpnormalize, 0, 0);
+	sampletabbox->registerWidget(labelsampleedit_edit, 0, 0);
+	sampletabbox->registerWidget(labelsampleedit_select, 0, 0);
+	sampletabbox->registerWidget(labelsampleedit_record, 0, 0);
+	sampletabbox->registerWidget(labelsampleedit_filter, 0, 0);
+	// </Sample editing>
+
+	// <Drawing and Generating>
+	buttonsmpdraw = new ToggleButton(18, 96, 17, 17, &sub_vram);
+	buttonsmpdraw->setBitmap(sampleedit_draw_raw);
+	buttonsmpdraw->registerToggleCallback(sampleDrawToggle);
+
+	sampletabbox->registerWidget(buttonsmpdraw, 0, 1);
+	// </Drawing and Generating>
+
+	// <Sample settings>
+	labelsamplevolume = new Label(22, 108, 25, 10, &sub_vram, false);
+	labelsamplevolume->setCaption("vol");
+
+	labelpanning = new Label(19, 127, 25, 10, &sub_vram, false);
+	labelpanning->setCaption("pan");
+
+	labelrelnote = new Label(79, 108, 25, 10, &sub_vram, false);
+	labelrelnote->setCaption("rel");
+
+	labelfinetune = new Label(75, 127, 30, 10, &sub_vram, false);
+	labelfinetune->setCaption("tun");
+
+	nssamplevolume = new NumberSlider(40, 103, 32, 17, &sub_vram, 64, 0, 64);
+	nssamplevolume->registerChangeCallback(handleSampleVolumeChange);
+
+	nspanning = new NumberSlider(40, 122, 32, 17, &sub_vram, 64, 0, 127, false);
+	nspanning->registerChangeCallback(handleSamplePanningChange);
+
+	nsrelnote = new NumberSliderRelNote(94, 103, 38, 17, &sub_vram, 0);
+	nsrelnote->registerChangeCallback(handleSampleRelNoteChange);
+
+	nsfinetune = new NumberSlider(94, 122, 38, 17, &sub_vram, 0, -128, 127);
+	nsfinetune->registerChangeCallback(handleSampleFineTuneChange);
+
+	sampletabbox->registerWidget(nssamplevolume, 0, 2);
+	sampletabbox->registerWidget(nspanning, 0, 2);
+	sampletabbox->registerWidget(nsrelnote, 0, 2);
+	sampletabbox->registerWidget(nsfinetune, 0, 2);
+	sampletabbox->registerWidget(labelfinetune, 0, 2);
+	sampletabbox->registerWidget(labelrelnote, 0, 2);
+	sampletabbox->registerWidget(labelsamplevolume, 0, 2);
+	sampletabbox->registerWidget(labelpanning, 0, 2);
 	// </Sample editing>
 
 	// <Drawing and Generating>
