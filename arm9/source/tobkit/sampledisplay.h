@@ -57,16 +57,17 @@ class SampleDisplay: public Widget {
 		// Drawing request
 		void pleaseDraw(void);
 
-		void setSample(Sample *_smp, bool redraw=true);
+		void setSample(Sample *_smp, u8 smpidx, u8 instidx);
 		bool getIsExposed(void) { return isExposed(); }
 		void select_all(void);
 		void clear_selection(void);
 
 		void drawCursor(void);
-		void startCursor(u8 note=NULL/*, u32 offset_raw_ = 0*/);
-		void stopCursor(bool full_redraw);
-		void eraseCursor(void);
-		void setCursorPosPtr(u32 *cursorpos);
+		void calcCursor(u32 n_ticks);
+		void startCursor(u8 chn, u8 note=NULL/*, u32 offset_raw_ = 0*/);
+		void stopCursor(u8 chn, bool full_redraw);
+		void eraseCursor(u8 chn);
+		void setCursorPosPtr(SampleCursor *cursorpos);
 
 		// Return start and end sample of selection
 		bool getSelection(u32 *startsample, u32 *endsample);
@@ -87,6 +88,8 @@ class SampleDisplay: public Widget {
 		long find_zero_crossing_near(long pos);
 
 		void draw(void);
+		void drawControls(void);
+		void drawWaveAt(u32 xpos);
 		void setTheme(Theme *theme_, u16 bgcolor_);
 		void scroll(u32 newscrollpos);
 		void calcScrollThingy(void);
@@ -97,10 +100,10 @@ class SampleDisplay: public Widget {
 		s32 sampleToPixel(u32 sample);
 
 		Sample *smp;
-
+		u8 smpidx, instidx;
 		u32 selstart, selend;
 		bool selection_exists;
-
+		s32 lastmax, lastmin;
 		bool pen_is_down;
 
 		bool active;
@@ -128,10 +131,10 @@ class SampleDisplay: public Widget {
 
 		u8 draw_last_x, draw_last_y;
 
-		bool playing;
-		u32 last_cursor_draw_x;
-		u32 *cursorpos;
-		u16 previous_cursor_pixels[DRAW_HEIGHT_S + 1];
+		bool playing[16];
+		u32 last_cursor_draw_x[16];
+		SampleCursor *cursorpos;
+		u16 previous_cursor_pixels[16][DRAW_HEIGHT_S + 1];
 };
 
 };
