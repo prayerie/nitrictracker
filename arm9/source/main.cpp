@@ -2550,7 +2550,7 @@ void handleCopy(void)
 void handlePaste(void)
 {
 	if(clipboard != NULL) {
-		int ptn_n_rows = song->getPatternLength(state->potpos);
+		int ptn_n_rows = song->getPatternLength(song->getPotEntry(state->potpos));
 		int n_channels = song->getChannels();
 		u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
 		u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
