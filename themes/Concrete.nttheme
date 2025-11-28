@@ -82,3 +82,8 @@
 81=888888 ; Togglebutton background
 82=6e6e6e ; Togglebutton foreground (off)
 83=cfcfcf ; Togglebutton foreground (on)
+93=000000 ; Text entry background
+94=a7a7a7 ; Text entry keys
+95=555555 ; Text entry key labels
+96=555555 ; Text entry modifier keys
+97=ffdd00 ; Text entry pressed keys

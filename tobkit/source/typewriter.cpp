@@ -48,11 +48,7 @@ Typewriter::Typewriter(const char *_msg, u16 *_char_base,
 	onOk = 0;
 	onCancel = 0;
 
-	dmaCopy(typewriterPal, BG_PALETTE_SUB+palette_offset*16, 32);
-	// generate highlight palette
-	for (int i = 0; i < 16; i++) {
-		BG_PALETTE_SUB[palette_offset * 16 + 16 + i] = typewriterPal[i] ? 0xFFFF : 0x0000;
-	}
+	
 
 	decompress(typewriterTiles, char_base, LZ77Vram);
 
@@ -65,13 +61,17 @@ Typewriter::Typewriter(const char *_msg, u16 *_char_base,
 	label = new Label(x+msglength+8, y+4, TW_WIDTH-msglength-12, 15, _vram, true, false, false, true);
 	gui.registerWidget(label, 0, SUB_SCREEN);
 	
-	buttonok = new Button(x+TW_WIDTH/2+2, y+TW_HEIGHT-12-4, 50, 12, _vram);
+	buttonok = new Button(x+TW_WIDTH/2-50-2 - 29, y+TW_HEIGHT-12-4, 50, 12, _vram);
 	buttonok->setCaption("ok");
 	gui.registerWidget(buttonok, 0, SUB_SCREEN);
 	
-	buttoncancel = new Button(x+TW_WIDTH/2-50-2, y+TW_HEIGHT-12-4, 50, 12, _vram);
+	buttoncancel = new Button((x+TW_WIDTH/2+2) + 25, y+TW_HEIGHT-12-4, 50, 12, _vram);
 	buttoncancel->setCaption("cancel");
 	gui.registerWidget(buttoncancel, 0, SUB_SCREEN);
+
+	buttonclear = new Button((x+TW_WIDTH/2-50-2 + 25), y+TW_HEIGHT-12-4, 50, 12, _vram);  
+	buttonclear->setCaption("clear");
+	gui.registerWidget(buttonclear, 0, SUB_SCREEN);
 	
 	// Set the tile bg translation registers to move the typewriter to (x,y)
 	*_trans_reg_x = -kx;
@@ -86,6 +86,7 @@ Typewriter::~Typewriter(void)
 	delete msglabel;
 	delete buttonok;
 	delete buttoncancel;
+	delete buttonclear;
 	ntxm_free(text);
 	
 	for(int py=0; py<TW_TILE_HEIGHT; ++py) {
@@ -93,7 +94,16 @@ Typewriter::~Typewriter(void)
 	}
 }
 
+void Typewriter::genPal(void)
+{
+	const u16 tw_themecols[6] = {
+		theme->col_typewriter_mod_key, theme->col_typewriter_key,
+		theme->col_typewriter_key_label, theme->col_typewriter_bg, 
+		theme->col_outline, theme->col_typewriter_mod_key_label
+	};
 
+	memcpy(&typewriterPal[1], tw_themecols, 6 * sizeof(u16));
+}
 // Drawing request
 void Typewriter::pleaseDraw(void) {
 	draw();
@@ -211,6 +221,12 @@ void Typewriter::registerCancelCallback(void (*onCancel_)(void))
 	buttoncancel->registerPushCallback(onCancel);
 }
 
+void Typewriter::registerClearCallback(void (*onClear_)(void))
+{
+	onClear = onClear_;
+	buttonclear->registerPushCallback(onClear);
+}
+
 void Typewriter::setText(const char *text_)
 {
 	strncpy(text, text_, MAX_TEXT_LEN);
@@ -248,6 +264,14 @@ void Typewriter::setTheme(Theme *theme_, u16 bgcolor_)
 	msglabel->setTheme(theme, theme->col_light_bg);
 	buttonok->setTheme(theme, theme->col_light_bg);
 	buttoncancel->setTheme(theme, theme->col_light_bg);
+	buttonclear->setTheme(theme, theme->col_light_bg);
+
+	genPal();
+	memcpy(BG_PALETTE_SUB+palette_offset*16, typewriterPal, 32);
+	// generate highlight palette
+	for (int i = 0; i < 16; i++) {
+		BG_PALETTE_SUB[palette_offset * 16 + 16 + i] = (i == 1 || i == 2) ? theme->col_typewriter_pressed_key : theme->col_typewriter_bg;
+	}
 }
 
 /* ===================== PRIVATE ===================== */

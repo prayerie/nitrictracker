@@ -1159,6 +1159,11 @@ void deleteTypewriter(void)
 	redrawSubScreen();
 }
 
+void clearTypewriterText(void)
+{
+	tw->setText("");
+}
+
 
 void handleTypewriterFilenameOk(void)
 {
@@ -1491,6 +1496,7 @@ void handleDSMWRecv(void)
 }
 
 #endif
+
 
 // Callback called from lbpot when the user changes the pot element
 void handlePotPosChangeFromUser(u16 newpotpos)
@@ -2135,7 +2141,7 @@ void handleSetEffectParam(void)
 {
 	setEffectParam(nseffectpar->getValue());
 }
-void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
+void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*clearCallback)(void), void (*cancelCallback)(void))
 {
     // TODO: Migrate to new TobKit to eliminate such ugliness
 #define SUB_BG1_X0 (*(vuint16*)0x04001014)
@@ -2143,7 +2149,7 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 
 	tw = new Typewriter(prompt, (uint16*)CHAR_BASE_BLOCK_SUB(1),
 		(uint16*)SCREEN_BASE_BLOCK_SUB(12), 3, &sub_vram, &SUB_BG1_X0, &SUB_BG1_Y0);
-
+	tw->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
 	tw->setText(str);
 	gui->registerOverlayWidget(tw, mykey_LEFT|mykey_RIGHT, SUB_SCREEN);
 	if(okCallback!=0) {
@@ -2152,13 +2158,16 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 	if(cancelCallback != 0) {
 		tw->registerCancelCallback(cancelCallback);
 	}
+	if(clearCallback != 0) {
+		tw->registerClearCallback(clearCallback);
+	}
 	typewriter_active = true;
 	tw->reveal();
 }
 
 
 void showTypewriterForFilename(void) {
-	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, deleteTypewriter);
+	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterNewFolderOk(void)
@@ -2174,7 +2183,7 @@ void handleTypewriterNewFolderOk(void)
 }
 
 void showTypewriterForNewFolder(void) {
-	showTypewriter("dir name", "", handleTypewriterNewFolderOk, deleteTypewriter);
+	showTypewriter("dir name", "", handleTypewriterNewFolderOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterInstnameOk(void)
@@ -2193,7 +2202,7 @@ void showTypewriterForInstRename(void)
 		return;
 	}
 
-	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, deleteTypewriter);
+	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterSongnameOk(void)
@@ -2206,7 +2215,7 @@ void handleTypewriterSongnameOk(void)
 void showTypewriterForSongRename(void)
 {
 	if(!state->playing || state->pause) {
-		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, deleteTypewriter);
+		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, clearTypewriterText, deleteTypewriter);
 	}
 }
 
@@ -2251,7 +2260,7 @@ void showTypewriterForSampleRename(void)
 	if(sample == 0)
 		return;
 
-	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, deleteTypewriter);
+	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleRecordSampleOK(void)
@@ -2557,7 +2566,6 @@ void handlePaste(void)
 
 		if (rows_over > 0 || cols_over > 0) {
 			ntxm_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
-
 			u8 new_height = clipboard->height() - rows_over;
 			u8 new_width = clipboard->width() - cols_over;
 			CellArray *new_i = new CellArray(new_width, new_height);
