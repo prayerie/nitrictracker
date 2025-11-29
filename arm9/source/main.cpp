@@ -2343,7 +2343,6 @@ void handleRecordSample(void)
 
 }
 
-
 void handleNormalizeOK(void)
 {
 	u16 percent = normalizeBox->getValue();
@@ -2365,6 +2364,27 @@ void handleNormalizeOK(void)
 	redrawSubScreen();
 }
 
+void handleNormalizeAuto(void)
+{
+	Sample *sample = song->getInstrument(state->instrument)->getSample(state->sample);
+	u32 startsample, endsample;
+	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
+	if(!sel_exists)
+	{
+		startsample = 0;
+		endsample = sample->getNSamples() - 1;
+	}
+
+	u32 max_amplitude = sample->getMaxAmplitude(startsample, endsample);
+	u16 factor = ((sample->getDynamicRange() / 2) << 16) / ((max_amplitude << 16) / 100);
+	factor = ntxm_clamp(factor, 100, 2000);
+	sample->normalize(factor, startsample, endsample);
+	setHasUnsavedChanges(true);
+	gui->unregisterOverlayWidget();
+	delete normalizeBox;
+	redrawSubScreen();
+}
+
 void handleNormalizeCancel(void)
 {
 	gui->unregisterOverlayWidget();
@@ -2379,7 +2399,7 @@ void sample_show_normalize_window(void)
 	Sample *smp = inst->getSample(state->sample);
 	if(!smp) return;
 
-	normalizeBox = new NormalizeBox(&sub_vram, handleNormalizeOK, handleNormalizeCancel);
+	normalizeBox = new NormalizeBox(&sub_vram, handleNormalizeOK, handleNormalizeAuto, handleNormalizeCancel);
 	gui->registerOverlayWidget(normalizeBox, 0, SUB_SCREEN);
 	normalizeBox->reveal();
 }
