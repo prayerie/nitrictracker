@@ -37,6 +37,8 @@ Settings::Settings(char *launch_path, bool use_fat)
 : handedness(RIGHT_HANDED),
 sample_preview(true),
 stereo_output(true),
+freq_47khz(false),
+lines_per_beat(8),
 fat(use_fat), changed(false)
 {
 	songpath[SETTINGS_FILENAME_LEN] = '\0';

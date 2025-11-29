@@ -44,7 +44,7 @@
 43=fdfdfe ; Memory usage: OK
 44=c9feff ; Memory usage: Warning
 45=ff5bc3 ; Memory usage: Alert
-46=000000 ; Text entry cursor
+46=fd5ac1 ; Text entry cursor
 47=080f19 ; Sample editor background
 48=e251ad ; Sample editor background (selection)
 49=00d5ff ; Sample editor waveform
@@ -82,3 +82,18 @@
 81=a969c7 ; Togglebutton background
 82=774387 ; Togglebutton foreground (off)
 83=fdfdfe ; Togglebutton foreground (on)
+84=334566 ; Piano - full key color 1
+85=1d2030 ; Piano - full key color 2
+86=9391f6 ; Piano - half key color 1
+87=4949c6 ; Piano - half key color 2
+88=8cffff ; Piano - full key color 1 (highlight)
+89=5ccccc ; Piano - full key color 2 (highlight)
+90=ff9ae2 ; Piano - half key color 1 (highlight)
+91=fd5ac1 ; Piano - half key color 2 (highlight)
+92=0f1519 ; Piano - outline
+93=0f1519 ; Text entry background
+94=1a2233 ; Text entry keys
+95=fd5ac1 ; Text entry key labels
+96=9391f6 ; Text entry modifier keys
+97=01eded ; Text entry pressed keys
+98=0f1519 ; Text entry modifier key labels

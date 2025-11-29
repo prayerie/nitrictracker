@@ -1,3 +1,32 @@
+-- NitrousTracker v0.5.2 (2025-11-29)
+
+New features:
+
+- automatic normalization for samples (prayerie)
+- instrument zapping can now filter to selected or unused
+  instruments only (prayerie)
+- songs with unsaved changes now have a visual indicator
+  in the file tab icon (prayerie)
+- typewriter theming support (prayerie)
+
+Improvements:
+
+- clear button in typewriter (prayerie)
+- support for polyphony in DSMIDI and for Easy Piano (exelotl)
+
+Fixes:
+
+- fixed libntxm loading >16-channel XM files which it could not
+  play (asie)
+- fixed memory leak in NormalizeBox (prayerie)
+- fixed red border disappearing after recording from mic in edit
+  mode (prayerie)
+- fixed regression in selection pasting (prayerie)
+- fixed settings reading uninitialized values on first boot
+  (prayerie)
+- fixed visual indicators for mute/solo channels being incorrect
+  upon changing songs (asie)
+
 -- NitrousTracker v0.5.1 (2025-11-22)
 
 New features:

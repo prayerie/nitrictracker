@@ -44,6 +44,7 @@ void TabBox::addTab(const u8 *icon, u8 tabidx)
 	GUI gui;
 	gui.setTheme(theme, theme->col_light_bg);
 	guis.push_back(gui);
+	highlighted_tabs.push_back(false);
 }
 
 // Adds a widget and specifies which button it listens to
@@ -159,13 +160,54 @@ void TabBox::setTheme(Theme *theme_, u16 bgcolor_)
 	}
 }
 
+void TabBox::setIcon(u8 guiidx, const u8 *icon)
+{
+	icons.at(guiidx) = icon;
+	drawIcon(guiidx);
+}
+
+
 /* ===================== PRIVATE ===================== */
+
+void TabBox::drawIcon(u8 guiidx)
+{
+	u8 size_border = icon_size + 2;
+	u8 size_full = size_border;
+	u8 offset = guiidx==currentgui ? 0 : 3;
+	u16 black = theme->col_tab_outline;
+	u16 col = highlighted_tabs.at(guiidx) ? theme->col_tab_outline : theme->col_tab_outline;
+
+	if (orientation == TABBOX_ORIENTATION_TOP)
+	{
+		bool selected = guiidx==currentgui;
+		u8 offset = selected ? 0 : 3;
+
+		drawFullBox(3+size_full*guiidx, 1+offset, size_border, size_border-offset, selected ? theme->col_selected_tab : theme->col_unselected_tab);
+		drawVLine(2+size_full*guiidx, 1+offset, size_border-offset, col);
+		drawHLine(3+size_full*guiidx, 0+offset, size_border - 1, col);
+		drawVLine(2+size_full*(guiidx+1), 1+offset, size_border-offset, col);
+		if (!selected) drawPixel(3+size_full*guiidx+size_border-1, 0+offset, theme->col_bg);
+		drawMonochromeIcon(4+size_full*guiidx, 2+offset, icon_size, icon_size - offset, icons.at(guiidx), theme->col_icon);
+	}
+	else
+	{
+		bool selected = guiidx==currentgui;
+		u8 offset = selected ? 0 : 3;
+
+		drawFullBox(1+offset, 2+size_full*guiidx, size_border-offset, size_border, selected ? theme->col_selected_tab : theme->col_unselected_tab);
+		drawHLine(1+offset, 2+size_full*guiidx, size_border-offset, col);
+		drawVLine(0+offset, 3+size_full*guiidx, size_border - 1, col);
+		drawHLine(1+offset, 2+size_full*(guiidx+1), size_border-offset-1, col);
+		if (!selected) drawPixel(offset, 2+size_full*guiidx + size_border, theme->col_light_bg);
+		drawMonochromeIconOffset(2+offset, 4+size_full*guiidx, icon_size - offset, icon_size, 0, 0, icon_size, icon_size, icons.at(guiidx), theme->col_icon);
+	}
+		
+}
 
 void TabBox::draw(void)
 {
 	u8 size_border = icon_size + 2;
 	u8 size_full = size_border;
-	u16 black = theme->col_tab_outline;
 
 	if (orientation == TABBOX_ORIENTATION_TOP) {
 		// Draw box
@@ -176,15 +218,8 @@ void TabBox::draw(void)
 		drawFullBox(0, 0, 3+size_full*guis.size(), 3, theme->col_bg);
 		
 		for(u8 guiidx=0;guiidx<guis.size();++guiidx) {
-			bool selected = guiidx==currentgui;
-			u8 offset = selected ? 0 : 3;
-
-			drawFullBox(3+size_full*guiidx, 1+offset, size_border, size_border-offset, selected ? theme->col_selected_tab : theme->col_unselected_tab);
-			drawVLine(2+size_full*guiidx, 1+offset, size_border-offset, black);
-			drawHLine(3+size_full*guiidx, 0+offset, size_border - 1, black);
-			drawVLine(2+size_full*(guiidx+1), 1+offset, size_border-offset, black);
-			if (!selected) drawPixel(3+size_full*guiidx+size_border-1, 0+offset, theme->col_bg);
-			drawMonochromeIcon(4+size_full*guiidx, 2+offset, icon_size, icon_size - offset, icons.at(guiidx), theme->col_icon);
+			
+			drawIcon(guiidx);
 		}
 	} else {
 		// Draw box
@@ -195,15 +230,8 @@ void TabBox::draw(void)
 		drawFullBox(0, 0, 3, 3+13*guis.size(), theme->col_light_bg);
 
 		for(u8 guiidx=0;guiidx<guis.size();++guiidx) {
-			bool selected = guiidx==currentgui;
-			u8 offset = selected ? 0 : 3;
-
-			drawFullBox(1+offset, 2+size_full*guiidx, size_border-offset, size_border, selected ? theme->col_selected_tab : theme->col_unselected_tab);
-			drawHLine(1+offset, 2+size_full*guiidx, size_border-offset, black);
-			drawVLine(0+offset, 3+size_full*guiidx, size_border - 1, black);
-			drawHLine(1+offset, 2+size_full*(guiidx+1), size_border-offset-1, black);
-			if (!selected) drawPixel(offset, 2+size_full*guiidx + size_border, theme->col_light_bg);
-			drawMonochromeIconOffset(2+offset, 4+size_full*guiidx, icon_size - offset, icon_size, 0, 0, icon_size, icon_size, icons.at(guiidx), theme->col_icon);
+			
+			drawIcon(guiidx);
 		}
 	}
 	

@@ -63,6 +63,7 @@ using namespace tobkit;
 #include "tools.h"
 
 #include "icon_disk_raw.h"
+#include "icon_disk_unsaved_raw.h"
 #include "icon_song_raw.h"
 #include "icon_sample_raw.h"
 #include "icon_wrench_raw.h"
@@ -258,6 +259,7 @@ char last_themepath[SETTINGS_FILENAME_LEN + 1];
 
 bool fastscroll = false;
 bool multisamp_from_mapsamp = false;
+bool mod_loading = false;
 uint16* map;
 
 // TODO: Make own class for tracker control and remove forward declarations
@@ -272,6 +274,8 @@ void redrawSubScreen(void);
 void showMessage(const char *msg, bool error);
 void deleteMessageBox(void);
 void stopPlay(void);
+void setHasUnsavedChanges(bool unsaved);
+
 
 #ifdef DEBUG
 void saveScreenshot(void);
@@ -333,6 +337,15 @@ void updateKeyLabels(void)
 	}
 }
 
+void setHasUnsavedChanges(bool unsaved)
+{
+	bool has_unsaved = unsaved && !mod_loading;
+
+	state->unsaved_changes = has_unsaved;
+
+	if (!tabbox) return;
+	tabbox->setIcon(1, has_unsaved ? icon_disk_unsaved_raw : icon_disk_raw);
+}
 static void handleNoteAdvanceRow(void)
 {
 	// Check if we are not at the bottom and only scroll down as far as possible
@@ -476,14 +489,11 @@ void handleNoteStroke(u8 note)
 		kb->setKeyLabel(note, label);
 	}
 	
-	
+	onKeypress(note);
 
 	// Play the note
-	// Send "play inst" command
-	CommandPlayInst(state->instrument, state->basenote + note, 255, 255); // channel==255 -> search for free channel
-	// after pr153 merge: also add this to handlePianoPakStroke
-	onKeypress(note); 
-	
+	CommandPlayNoteAuto(state->instrument, state->basenote + note, 255, note);
+
 #ifdef MIDI
 	u8 midichannel = state->instrument % 16;
 	if( (state->dsmi_connected) && (state->dsmi_send) )
@@ -509,9 +519,47 @@ void handleNoteRelease(u8 note, bool moved)
 		redraw_main_requested = true;
 	}
 
-	// after pr153 merge: also add this to handlePianoPakRelease
 	onKeyrelease();
-	CommandStopInst(255);
+	CommandStopNoteAuto(note);
+
+#ifdef MIDI
+	u8 midichannel = state->instrument % 16;
+	if( (state->dsmi_connected) && (state->dsmi_send) )
+		dsmi_write(NOTE_OFF | midichannel, state->basenote + note, 127);
+#endif
+}
+
+void handlePianoPakStroke(u8 note)
+{
+	if(state->recording == true)
+	{
+		Cell newCell = getChangedNote(song->getPattern(song->getPotEntry(state->potpos))[state->channel][state->getCursorRow()], note);
+		action_buffer->add(song, new SingleCellSetAction(state, state->channel, state->getCursorRow(), newCell));
+
+		// Advance row
+		handleNoteAdvanceRow();
+
+		// Redraw
+		DC_FlushAll();
+		redraw_main_requested = true;
+	}
+
+	onKeypress(note);
+
+	// Play the note
+	CommandPlayNoteAuto(state->instrument, state->basenote + note, 255, note);
+
+#ifdef MIDI
+	u8 midichannel = state->instrument % 16;
+	if( (state->dsmi_connected) && (state->dsmi_send) )
+		dsmi_write(NOTE_ON | midichannel, state->basenote + note, 127);
+#endif
+}
+
+void handlePianoPakRelease(u8 note)
+{
+	onKeyrelease();
+	CommandStopNoteAuto(note);
 
 #ifdef MIDI
 	u8 midichannel = state->instrument % 16;
@@ -567,6 +615,8 @@ void updateFilesystemState(bool draw)
 
 void handleSampleChange(const u16 newsample)
 {
+	bool had_changes = state->unsaved_changes;
+
 	state->sample = newsample;
 	Instrument *inst = song->getInstrument(lbinstruments->getidx());
 	Sample *smp = inst ? inst->getSample(newsample) : NULL;
@@ -614,6 +664,7 @@ void handleSampleChange(const u16 newsample)
 		rbg_sampleloop->setActive(0);
 		
 	updateKeyLabels();
+	if (!had_changes) setHasUnsavedChanges(false);
 	/*
 	printf("Selected:");
 	if(smp->is16bit()) {
@@ -632,6 +683,7 @@ void handleSampleChange(const u16 newsample)
 
 void volEnvSetInst(Instrument *inst)
 {
+	bool had_unsaved = state->unsaved_changes;
 	if(inst == NULL)
 	{
 		volenvedit->setZoomAndPos(0, 0);
@@ -657,6 +709,7 @@ void volEnvSetInst(Instrument *inst)
 	cbsusenabled->set_enabled(inst != NULL);
 	tbmapsamples->set_enabled(inst != NULL);
 	volenvedit->pleaseDraw();
+	if (!had_unsaved) setHasUnsavedChanges(false);
 }
 
 void handleInstChange(const u16 newinst, const bool reset=true)
@@ -770,7 +823,8 @@ void startCursorTimer(void)
 void setSong(Song *newsong)
 {
 	song = newsong;
-	char *str = (char*) ntxm_ccalloc(1, 256);
+	char str[256];
+	str[255] = 0;
 
 	CommandSetSong(song);
 
@@ -787,36 +841,31 @@ void setSong(Song *newsong)
 	// Update POT
 	lbpot->clear();
 	u8 potentry;
-	for(u8 i=0;i<song->getPotLength();++i) {
+	for(int i=0;i<song->getPotLength();++i) {
 		potentry = song->getPotEntry(i);
-		snprintf(str, 255, "%2x", potentry);
+		snprintf(str, sizeof(str)-1, "%2x", potentry);
 		lbpot->add(str);
 	}
 
 	// Update instrument list
 	Instrument *inst;
-	for(u8 i=0;i<MAX_INSTRUMENTS;++i)
+	for(int i=MAX_INSTRUMENTS-1;i>=0;i--)
 	{
 		inst = song->getInstrument(i);
 		if(inst!=NULL) {
-			strncpy(str, inst->getName(), 255);
+			strncpy(str, inst->getName(), sizeof(str)-1);
 			lbinstruments->set(i, str);
 		} else {
 			lbinstruments->set(i, "");
 		}
 	}
-
+	
+	// inst is now equal to song->getInstrument(0)
 	lbinstruments->select(0);
+	updateSampleList(inst);
+	handleSampleChange(0);
+	volEnvSetInst(inst);
 
-	updateSampleList(song->getInstrument(0));
-
-	inst = song->getInstrument(0);
-	if(inst != 0)
-		handleSampleChange(0);
-
-	volEnvSetInst(song->getInstrument(0));
-
-	inst = song->getInstrument(0);
 	if(inst != 0)
 	{
 		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
@@ -842,12 +891,11 @@ void setSong(Song *newsong)
 		sampledisplay->setSample(inst->getSample(state->sample), state->sample, state->instrument);
 	}
 
-
-	strncpy(str, song->getName(), 255);
+	strncpy(str, song->getName(), sizeof(str)-1);
 	labelsongname->setCaption(str);
 
-	ntxm_free(str);
-
+	mod_loading = false;
+	setHasUnsavedChanges(false);
 	drawMainScreen();
 }
 
@@ -902,6 +950,7 @@ bool loadSample(const char *filename_with_path)
 
 	DC_FlushAll();
 
+	setHasUnsavedChanges(true);
 	return true;
 }
 
@@ -933,15 +982,22 @@ void showSlowLoadOperation(std::function<const char*(void)> loadOp)
 		showMessage(res, true);
 }
 
+File *getSelectedFile(void)
+{
+	File *file = fileselector->getSelectedFile();
+	if((file==0)||(file->is_dir == true))
+		return NULL;
+
+	return file;
+}
+
 void handleDelfileConfirmed(void)
 {
 	deleteMessageBox();
 
-	File *file = fileselector->getSelectedFile();
+	File *file = getSelectedFile();
+	if(file==0) return;
 	debugprintf("%s\n", file->name_with_path.c_str());
-	if((file==0)||(file->is_dir == true)) {
-		return;
-	}
 
 	const char *fn = file->name_with_path.c_str();
 	if (unlink(fn)) {
@@ -954,11 +1010,9 @@ void handleDelfileConfirmed(void)
 
 void handleDelfile(void)
 {
-	File *file = fileselector->getSelectedFile();
+	File *file = getSelectedFile();
+	if(file==0) return;
 	debugprintf("%s\n", file->name_with_path.c_str());
-	if((file==0)||(file->is_dir == true)) {
-		return;
-	}
 
 	mb = new MessageBox(&sub_vram, "are you sure?", 2, "yes", handleDelfileConfirmed, "no", deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
@@ -966,37 +1020,54 @@ void handleDelfile(void)
 	mb->pleaseDraw();
 }
 
+
+void loadModule(void)
+{
+	deleteMessageBox();
+
+	File *file = getSelectedFile();
+	if(file==0) return;
+
+	delete song; // For christs sake do some checks before deleting the song!!
+	pv->unmuteAll();
+
+	mod_loading = true;
+	showSlowLoadOperation([file](){
+		Song *newsong;
+		u16 err;
+		err = xm_transport.load(file->name_with_path.c_str(), &newsong);
+		if (err)
+		{
+			setSong(new Song(10, 125));
+			return xm_transport.getError(err);
+		}
+		else
+		{
+			setSong(newsong);
+			return (const char*) NULL;
+		}
+	});
+	setHasUnsavedChanges(false);
+}
+
 void handleLoad(void)
 {
-	File *file = fileselector->getSelectedFile();
-	if((file==0)||(file->is_dir == true)) {
-		return;
-	}
+	File *file = getSelectedFile();
+	if(file==0) return;
 
 	const char *fn = file->name.c_str();
-	
 	if(strcasecmp(fn + strlen(fn) - 3, ".xm")==0)
 	{
 		stopPlay();
 
-		delete song; // For christs sake do some checks before deleting the song!!
-		pv->unmuteAll();
-
-		showSlowLoadOperation([file](){
-			Song *newsong;
-			u16 err;
-			err = xm_transport.load(file->name_with_path.c_str(), &newsong);
-			if (err)
-			{
-				setSong(new Song(10, 125));
-				return xm_transport.getError(err);
-			}
-			else
-			{
-				setSong(newsong);
-				return (const char*) NULL;
-			}
-		});
+		if (state->unsaved_changes) {
+			mb = new MessageBox(&sub_vram, "you have unsaved changes", 2, "load", loadModule, "cancel", deleteMessageBox);
+			gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+			mb->reveal();
+			mb->pleaseDraw();
+		} else 
+			loadModule();
+		
 	}
 	else if(strcasecmp(fn + strlen(fn) - 4, ".wav")==0)
 	{
@@ -1006,6 +1077,8 @@ void handleLoad(void)
 		});
 	}
 }
+
+
 
 // Reads filename and path from fileselector and saves the file
 void saveFile(void)
@@ -1065,7 +1138,8 @@ void saveFile(void)
 	if(err > 0)
 	{
 		showMessage(xm_transport.getError(err), true);
-	}
+	} else
+		setHasUnsavedChanges(false);
 }
 
 void mbOverwrite(void) {
@@ -1079,7 +1153,7 @@ void handleSave(void)
 	// sporadic filename sanity check
 	char *filename = labelFilename->getCaption();
 	if(strlen(filename)==0) {
-		showMessage("No filename!", true);
+		showMessage("no filename!", true);
 		return;
 	}
 
@@ -1088,13 +1162,13 @@ void handleSave(void)
 		Instrument *inst = song->getInstrument(state->instrument);
 		if(inst == NULL)
 		{
-			showMessage("Empty instrument!", true);
+			showMessage("empty instrument!", true);
 			return;
 		}
 		Sample *smp = inst->getSample((state->sample));
 		if(smp == NULL)
 		{
-			showMessage("Empty sample!", true);
+			showMessage("empty sample!", true);
 			return;
 		}
 	}
@@ -1152,6 +1226,11 @@ void deleteTypewriter(void)
 	typewriter_active = false;
 	delete tw;
 	redrawSubScreen();
+}
+
+void clearTypewriterText(void)
+{
+	tw->setText("");
 }
 
 
@@ -1214,6 +1293,7 @@ void stopNoteStroke(void) {
 static void actionBufferChangeCallback(void) {
 	buttonundo->set_enabled(action_buffer->can_undo());
 	buttonredo->set_enabled(action_buffer->can_redo());
+	if (action_buffer->can_undo() || action_buffer->can_redo()) setHasUnsavedChanges(true);
 	redraw_main_requested = true;
 }
 
@@ -1470,23 +1550,20 @@ void handleDSMWRecv(void)
 			switch(type)
 			{
 				case NOTE_ON: {
-					u8 channel = 255;
 					u8 inst = message & 0x0F;
 					u8 note = data1;
 					u8 volume = data2;
+					u16 tag = (((u16)inst + 1) << 8) | note;
 					// debugprintf("on %d %d\n", inst, note);
-					CommandPlayInst(inst, note, volume, channel);
+					CommandPlayNoteAuto(inst, note, volume, tag);
 					break;
 				}
 
 				case NOTE_OFF: {
-					// FIXME: Autochannel stores only the last activated channel, which
-					// breaks polyphony. This mitigates the issue by disabling all
-					// matching notes, but a better fix would probably be to remember
-					// which NTXM channels are mapped to which MIDI channels.
 					u8 inst = message & 0x0F;
 					u8 note = data1;
-					CommandStopMatchingInst(inst, note);
+					u16 tag = (((u16)inst + 1) << 8) | note;
+					CommandStopNoteAuto(tag);
 					break;
 				}
 			}
@@ -1495,6 +1572,7 @@ void handleDSMWRecv(void)
 }
 
 #endif
+
 
 // Callback called from lbpot when the user changes the pot element
 void handlePotPosChangeFromUser(u16 newpotpos)
@@ -1530,6 +1608,7 @@ void handlePotDec(void) {
 	char str[3];
 	snprintf(str, sizeof(str), "%2x", pattern);
 	lbpot->set(state->potpos, str);
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1557,6 +1636,7 @@ void handlePotInc(void)
 	char str[3];
 	snprintf(str, sizeof(str), "%2x", pattern);
 	lbpot->set(state->potpos, str);
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1569,6 +1649,7 @@ void handlePotIns(void)
 	DC_FlushAll();
 	lbpot->ins(lbpot->getidx(), lbpot->get(lbpot->getidx()));
 	updateLabelSongLen();
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1595,6 +1676,7 @@ void handlePotDel(void)
 		nsrestartpos->setValue( song->getRestartPosition() );
 		DC_FlushAll();
 	}
+	setHasUnsavedChanges(true);
 }
 
 void handlePtnClone(void)
@@ -1624,6 +1706,7 @@ void handlePtnClone(void)
 	lbpot->ins(lbpot->getidx()+1, numberstr);
 
 	updateLabelSongLen();
+	setHasUnsavedChanges(true);
 }
 
 void handleChannelAdd(void)
@@ -1632,6 +1715,7 @@ void handleChannelAdd(void)
 	song->channelAdd();
 	redraw_main_requested = true;
 	updateLabelChannels();
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1659,6 +1743,7 @@ void handleChannelDel(void)
 
 	redraw_main_requested = true;
 	updateLabelChannels();
+	setHasUnsavedChanges(true);
 }
 
 
@@ -1677,17 +1762,20 @@ void handlePtnLengthChange(s32 newlength)
 			state->setCursorRow(newlength-1);
 		}
 		redraw_main_requested = true;
+		setHasUnsavedChanges(true);
 	}
 }
 
 
 void handleTempoChange(u8 tempo) {
 	song->setTempo(tempo);
+	setHasUnsavedChanges(true);
 	DC_FlushAll();
 }
 
 void handleBpmChange(s32 bpm) {
 	song->setBpm(bpm);
+	setHasUnsavedChanges(true);
 	DC_FlushAll();
 }
 
@@ -1695,6 +1783,7 @@ void handleLinesBeatChange(u8 lpb) {
 	settings->setLinesPerBeat(lpb);
 	pv->setLinesPerBeat(lpb);
 	redraw_main_requested = true;
+	setHasUnsavedChanges(true);
 }
 
 void handleRestartPosChange(s32 restartpos)
@@ -1704,7 +1793,16 @@ void handleRestartPosChange(s32 restartpos)
 		restartpos = song->getPotLength()-1;
 	}
 	song->setRestartPosition(restartpos);
+	setHasUnsavedChanges(true);
 	DC_FlushAll();
+}
+
+void confirmZap(void (*onConfirm)(void))
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "are you sure", 2, "yes", onConfirm, "cancel", deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
 }
 
 void zapPatterns(void)
@@ -1734,6 +1832,47 @@ void zapPatterns(void)
 	updateMemoryState(true);
 }
 
+void zapUnusedInstruments(void) {
+	bool used_insts[MAX_INSTRUMENTS] = { false };
+
+	song->zapUnusedInstruments(used_insts);
+
+	for (int i = 0; i < MAX_INSTRUMENTS; i++) {
+		if (used_insts[i]) continue;
+
+		lbinstruments->set(i, "");
+		if (lbinstruments->getidx() == i) {
+			sampledisplay->setSample(NULL);
+			handleSampleChange(0);
+			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+				lbsamples->set(i, "");
+			}
+		}
+	}
+		
+	DC_FlushAll();
+	deleteMessageBox();
+	CommandSetSong(song);
+	updateMemoryState(true);
+}
+
+void zapCurrentInstrument(void) {
+	PrintFreeMem();
+	u8 inst = lbinstruments->getidx();
+	song->zapInstrument(inst);
+	sampledisplay->setSample(NULL);
+	handleSampleChange(0);
+	DC_FlushAll();
+	deleteMessageBox();
+	
+	lbinstruments->set(inst, "");
+	for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+		lbsamples->set(i, "");
+	}
+	CommandSetSong(song);
+	updateMemoryState(true);
+}
+
 void zapInstruments(void)
 {
 	song->zapInstruments();
@@ -1755,7 +1894,9 @@ void zapInstruments(void)
 
 	CommandSetSong(song);
 	updateMemoryState(true);
+	setHasUnsavedChanges(true);
 }
+
 
 void zapSong(void) {
 	deleteMessageBox();
@@ -1764,12 +1905,37 @@ void zapSong(void) {
 	updateMemoryState(true);
 }
 
+void confirmZapSong(void)
+{
+	confirmZap(zapSong);
+}
+
+void confirmZapInsts(void)
+{
+	confirmZap(zapInstruments);
+}
+
+void confirmZapPatterns(void)
+{
+	confirmZap(zapPatterns);
+}
+
+void zapInstrumentsChoice(void)
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "which instruments", 4, "selected", zapCurrentInstrument, "unused", zapUnusedInstruments,
+		"  all  ", confirmZapInsts, "cancel",
+		deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
+}
+
 void handleZap(void)
 {
 	stopPlay(); // Safety first
 
-	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", zapPatterns,
-		"instruments", zapInstruments, "song", zapSong, "cancel",
+	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", confirmZapPatterns,
+		"instruments", zapInstrumentsChoice, "song", confirmZapSong, "cancel",
 		deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
@@ -2126,7 +2292,7 @@ void handleSetEffectParam(void)
 {
 	setEffectParam(nseffectpar->getValue());
 }
-void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
+void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*clearCallback)(void), void (*cancelCallback)(void))
 {
     // TODO: Migrate to new TobKit to eliminate such ugliness
 #define SUB_BG1_X0 (*(vuint16*)0x04001014)
@@ -2134,7 +2300,7 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 
 	tw = new Typewriter(prompt, (uint16*)CHAR_BASE_BLOCK_SUB(1),
 		(uint16*)SCREEN_BASE_BLOCK_SUB(12), 3, &sub_vram, &SUB_BG1_X0, &SUB_BG1_Y0);
-
+	tw->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
 	tw->setText(str);
 	gui->registerOverlayWidget(tw, mykey_LEFT|mykey_RIGHT, SUB_SCREEN);
 	if(okCallback!=0) {
@@ -2143,13 +2309,16 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 	if(cancelCallback != 0) {
 		tw->registerCancelCallback(cancelCallback);
 	}
+	if(clearCallback != 0) {
+		tw->registerClearCallback(clearCallback);
+	}
 	typewriter_active = true;
 	tw->reveal();
 }
 
 
 void showTypewriterForFilename(void) {
-	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, deleteTypewriter);
+	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterNewFolderOk(void)
@@ -2165,7 +2334,7 @@ void handleTypewriterNewFolderOk(void)
 }
 
 void showTypewriterForNewFolder(void) {
-	showTypewriter("dir name", "", handleTypewriterNewFolderOk, deleteTypewriter);
+	showTypewriter("dir name", "", handleTypewriterNewFolderOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterInstnameOk(void)
@@ -2184,7 +2353,7 @@ void showTypewriterForInstRename(void)
 		return;
 	}
 
-	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, deleteTypewriter);
+	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterSongnameOk(void)
@@ -2197,7 +2366,7 @@ void handleTypewriterSongnameOk(void)
 void showTypewriterForSongRename(void)
 {
 	if(!state->playing || state->pause) {
-		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, deleteTypewriter);
+		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, clearTypewriterText, deleteTypewriter);
 	}
 }
 
@@ -2242,7 +2411,7 @@ void showTypewriterForSampleRename(void)
 	if(sample == 0)
 		return;
 
-	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, deleteTypewriter);
+	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleRecordSampleOK(void)
@@ -2275,7 +2444,9 @@ void handleRecordSampleOK(void)
 	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
 
 	handleSampleChange(state->sample);
+	setHasUnsavedChanges(true);
 	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 void handleRecordSampleCancel(void)
@@ -2288,6 +2459,7 @@ void handleRecordSampleCancel(void)
 	CommandMicOff();
 
 	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 // OMG FUCKING BEST FEATURE111
@@ -2322,7 +2494,6 @@ void handleRecordSample(void)
 
 }
 
-
 void handleNormalizeOK(void)
 {
 	u16 percent = normalizeBox->getValue();
@@ -2338,7 +2509,28 @@ void handleNormalizeOK(void)
 	}
 
 	sample->normalize(percent, startsample, endsample);
+	setHasUnsavedChanges(true);
+	gui->unregisterOverlayWidget();
+	delete normalizeBox;
+	redrawSubScreen();
+}
 
+void handleNormalizeAuto(void)
+{
+	Sample *sample = song->getInstrument(state->instrument)->getSample(state->sample);
+	u32 startsample, endsample;
+	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
+	if(!sel_exists)
+	{
+		startsample = 0;
+		endsample = sample->getNSamples() - 1;
+	}
+
+	u32 max_amplitude = sample->getMaxAmplitude(startsample, endsample);
+	u16 factor = ((sample->getDynamicRange() / 2) << 16) / ((max_amplitude << 16) / 100);
+	factor = ntxm_clamp(factor, 100, 2000);
+	sample->normalize(factor, startsample, endsample);
+	setHasUnsavedChanges(true);
 	gui->unregisterOverlayWidget();
 	delete normalizeBox;
 	redrawSubScreen();
@@ -2358,7 +2550,7 @@ void sample_show_normalize_window(void)
 	Sample *smp = inst->getSample(state->sample);
 	if(!smp) return;
 
-	normalizeBox = new NormalizeBox(&sub_vram, handleNormalizeOK, handleNormalizeCancel);
+	normalizeBox = new NormalizeBox(&sub_vram, handleNormalizeOK, handleNormalizeAuto, handleNormalizeCancel);
 	gui->registerOverlayWidget(normalizeBox, 0, SUB_SCREEN);
 	normalizeBox->reveal();
 }
@@ -2540,14 +2732,13 @@ void handleCopy(void)
 void handlePaste(void)
 {
 	if(clipboard != NULL) {
-		int ptn_n_rows = song->getPatternLength(state->potpos);
+		int ptn_n_rows = song->getPatternLength(song->getPotEntry(state->potpos));
 		int n_channels = song->getChannels();
 		u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
 		u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
 
 		if (rows_over > 0 || cols_over > 0) {
 			ntxm_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
-
 			u8 new_height = clipboard->height() - rows_over;
 			u8 new_width = clipboard->width() - cols_over;
 			CellArray *new_i = new CellArray(new_width, new_height);
@@ -2604,6 +2795,7 @@ void handleSampleVolumeChange(s32 newvol)
 
 	smp->setVolume(vol);
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void handleSamplePanningChange(s32 newpanning)
@@ -2616,6 +2808,7 @@ void handleSamplePanningChange(s32 newpanning)
 
 	u8 pan = newpanning * 2;
 
+	if (smp->getPanning() != pan) setHasUnsavedChanges(true);
 	smp->setPanning(pan);
 	smp->setBasePanning();
 	DC_FlushAll();
@@ -2631,7 +2824,9 @@ void handleSampleRelNoteChange(s32 newnote)
 
 	DC_FlushAll();
 
+	if (smp->getRelNote() != newnote) setHasUnsavedChanges(true);
 	smp->setRelNote(newnote);
+	
 }
 
 void handleSampleFineTuneChange(s32 newfinetune)
@@ -2644,6 +2839,7 @@ void handleSampleFineTuneChange(s32 newfinetune)
 
 	DC_FlushAll();
 
+	if (smp->getFinetune() != newfinetune) setHasUnsavedChanges(true);
 	smp->setFinetune(newfinetune);
 }
 
@@ -2688,6 +2884,7 @@ void sample_del_selection(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sample_fade_in(void)
@@ -2709,6 +2906,7 @@ void sample_fade_in(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sample_fade_out(void)
@@ -2730,6 +2928,7 @@ void sample_fade_out(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sample_reverse(void)
@@ -2754,6 +2953,7 @@ void sample_reverse(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sampleTabBoxChage(u8 tab)
@@ -2961,6 +3161,8 @@ void envZoomOut(void)
 	volenvedit->zoomOut();
 }
 
+
+
 void volEnvPointsChanged(void)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
@@ -2976,6 +3178,7 @@ void volEnvPointsChanged(void)
 	volenvedit->pleaseDraw();
 
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void volEnvDrawFinish(void)
@@ -2983,6 +3186,7 @@ void volEnvDrawFinish(void)
 	cbvolenvenabled->setChecked(true);
 	toggleVolEnvEnabled(true);
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void envStartDrawMode(void)
@@ -3010,6 +3214,7 @@ void envSetSustainPoint(void)
 	volenvedit->pleaseDraw();
 
 	DC_FlushAll();
+	setHasUnsavedChanges(true);
 }
 
 void envToggleSustainEnabled(bool is_enabled)
@@ -3022,6 +3227,7 @@ void envToggleSustainEnabled(bool is_enabled)
 		volenvedit->toggleSustain(is_enabled);
 		volenvedit->pleaseDraw();
 	}
+	setHasUnsavedChanges(true);
 }
 
 void sampleDrawToggle(bool on)
@@ -3053,7 +3259,7 @@ void setupGUI(bool dldi_enabled)
 	tabbox->addTab(icon_sample_raw, 2);
 	tabbox->addTab(icon_trumpet_raw, 3);
 	tabbox->addTab(icon_wrench_raw, 4);
-
+	
 	// <Disk OP GUI>
 		fileselector = new FileSelector(38, 21, 100, 111, &sub_vram);
 
@@ -3754,7 +3960,7 @@ void setupGUI(bool dldi_enabled)
 	actionBufferChangeCallback();
 	updateTempoAndBpm();
 	handleLinesBeatChange(settings->getLinesPerBeat());
-
+	setHasUnsavedChanges(false);
 
 	gui->drawSubScreen(); // GUI
 	drawMainScreen(); // Pattern view. The function also flips buffers
@@ -3931,12 +4137,14 @@ void VblankHandler(void)
 		if(keysup & mykey_B)
 			fastscroll = false;
 	}
-
+	
 	// Easy Piano pak handling logic
 	if (pianoIsInserted())
 	{
 		pianoScanKeys();
+
 		u16 piano_down = pianoKeysDown();
+		u16 piano_up = pianoKeysUp();
 
 		for (u16 i = 0; i < 15; i++) {
 			if (i > 10 && i < 13)
@@ -3945,8 +4153,10 @@ void VblankHandler(void)
 			u16 note_val = (i >= 13) ? (i - 2) : i;
 
 			if (piano_down & (1 << i)) {
-				handleNoteStroke(note_val);
-				handleNoteRelease(note_val, false);
+				handlePianoPakStroke(note_val);
+			}
+			if (piano_up & (1 << i)) {
+				handlePianoPakRelease(note_val);
 			}
  		}
 	}
