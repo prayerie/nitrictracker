@@ -44,7 +44,7 @@
 43=8bc583 ; Memory usage: OK
 44=ffff00 ; Memory usage: Warning
 45=ff0000 ; Memory usage: Alert
-46=000000 ; Text entry cursor
+46=a49054 ; Text entry cursor
 47=000000 ; Sample editor background
 48=48403c ; Sample editor background (selection)
 49=00b000 ; Sample editor waveform
@@ -82,3 +82,9 @@
 81=504428 ; Togglebutton background
 82=827241 ; Togglebutton foreground (off)
 83=ffde84 ; Togglebutton foreground (on)
+93=000000 ; Text entry background
+94=504428 ; Text entry keys
+95=000000 ; Text entry key labels
+96=a49054 ; Text entry modifier keys
+97=00b000 ; Text entry pressed keys
+98=000000 ; Text entry key labels

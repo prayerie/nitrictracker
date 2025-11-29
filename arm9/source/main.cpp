@@ -837,7 +837,8 @@ void startCursorTimer(void)
 void setSong(Song *newsong)
 {
 	song = newsong;
-	char *str = (char*) ntxm_ccalloc(1, 256);
+	char str[256];
+	str[255] = 0;
 
 	CommandSetSong(song);
 
@@ -854,34 +855,30 @@ void setSong(Song *newsong)
 	// Update POT
 	lbpot->clear();
 	u8 potentry;
-	for(u8 i=0;i<song->getPotLength();++i) {
+	for(int i=0;i<song->getPotLength();++i) {
 		potentry = song->getPotEntry(i);
-		snprintf(str, 255, "%2x", potentry);
+		snprintf(str, sizeof(str)-1, "%2x", potentry);
 		lbpot->add(str);
 	}
 
 	// Update instrument list
 	Instrument *inst;
-	for(u8 i=0;i<MAX_INSTRUMENTS;++i)
+	for(int i=MAX_INSTRUMENTS-1;i>=0;i--)
 	{
 		inst = song->getInstrument(i);
 		if(inst!=NULL) {
-			strncpy(str, inst->getName(), 255);
+			strncpy(str, inst->getName(), sizeof(str)-1);
 			lbinstruments->set(i, str);
 		} else {
 			lbinstruments->set(i, "");
 		}
 	}
-
+	
+	// inst is now equal to song->getInstrument(0)
 	lbinstruments->select(0);
-
-	updateSampleList(song->getInstrument(0));
-
-	inst = song->getInstrument(0);
+	updateSampleList(inst);
 	handleSampleChange(0);
-		
-
-	volEnvSetInst(song->getInstrument(0));
+	volEnvSetInst(inst);
 
 	if(inst != 0)
 	{
@@ -908,11 +905,9 @@ void setSong(Song *newsong)
 		sampledisplay->setSample(inst->getSample(state->sample), state->sample, state->instrument);
 	}
 
-
-	strncpy(str, song->getName(), 255);
+	strncpy(str, song->getName(), sizeof(str)-1);
 	labelsongname->setCaption(str);
 
-	ntxm_free(str);
 	mod_loading = false;
 	setHasUnsavedChanges(false);
 	drawMainScreen();
@@ -1246,6 +1241,11 @@ void deleteTypewriter(void)
 	typewriter_active = false;
 	delete tw;
 	redrawSubScreen();
+}
+
+void clearTypewriterText(void)
+{
+	tw->setText("");
 }
 
 
@@ -1589,6 +1589,7 @@ void handleDSMWRecv(void)
 
 #endif
 
+
 // Callback called from lbpot when the user changes the pot element
 void handlePotPosChangeFromUser(u16 newpotpos)
 {
@@ -1857,7 +1858,7 @@ void zapUnusedInstruments(void) {
 
 		lbinstruments->set(i, "");
 		if (lbinstruments->getidx() == i) {
-			sampledisplay->setSample(NULL, 0, 255);
+			sampledisplay->setSample(NULL);
 			handleSampleChange(0);
 			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
 				lbsamples->set(i, "");
@@ -1875,7 +1876,7 @@ void zapCurrentInstrument(void) {
 	PrintFreeMem();
 	u8 inst = lbinstruments->getidx();
 	song->zapInstrument(inst);
-	sampledisplay->setSample(NULL, 0, 255);
+	sampledisplay->setSample(NULL);
 	handleSampleChange(0);
 	DC_FlushAll();
 	deleteMessageBox();
@@ -2308,7 +2309,7 @@ void handleSetEffectParam(void)
 {
 	setEffectParam(nseffectpar->getValue());
 }
-void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
+void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*clearCallback)(void), void (*cancelCallback)(void))
 {
     // TODO: Migrate to new TobKit to eliminate such ugliness
 #define SUB_BG1_X0 (*(vuint16*)0x04001014)
@@ -2316,7 +2317,7 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 
 	tw = new Typewriter(prompt, (uint16*)CHAR_BASE_BLOCK_SUB(1),
 		(uint16*)SCREEN_BASE_BLOCK_SUB(12), 3, &sub_vram, &SUB_BG1_X0, &SUB_BG1_Y0);
-
+	tw->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
 	tw->setText(str);
 	gui->registerOverlayWidget(tw, mykey_LEFT|mykey_RIGHT, SUB_SCREEN);
 	if(okCallback!=0) {
@@ -2325,13 +2326,16 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 	if(cancelCallback != 0) {
 		tw->registerCancelCallback(cancelCallback);
 	}
+	if(clearCallback != 0) {
+		tw->registerClearCallback(clearCallback);
+	}
 	typewriter_active = true;
 	tw->reveal();
 }
 
 
 void showTypewriterForFilename(void) {
-	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, deleteTypewriter);
+	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterNewFolderOk(void)
@@ -2347,7 +2351,7 @@ void handleTypewriterNewFolderOk(void)
 }
 
 void showTypewriterForNewFolder(void) {
-	showTypewriter("dir name", "", handleTypewriterNewFolderOk, deleteTypewriter);
+	showTypewriter("dir name", "", handleTypewriterNewFolderOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterInstnameOk(void)
@@ -2366,7 +2370,7 @@ void showTypewriterForInstRename(void)
 		return;
 	}
 
-	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, deleteTypewriter);
+	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterSongnameOk(void)
@@ -2379,7 +2383,7 @@ void handleTypewriterSongnameOk(void)
 void showTypewriterForSongRename(void)
 {
 	if(!state->playing || state->pause) {
-		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, deleteTypewriter);
+		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, clearTypewriterText, deleteTypewriter);
 	}
 }
 
@@ -2424,7 +2428,56 @@ void showTypewriterForSampleRename(void)
 	if(sample == 0)
 		return;
 
-	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, deleteTypewriter);
+	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, clearTypewriterText, deleteTypewriter);
+}
+
+
+void handleRenderSampleOK(void)
+{
+	pausePlay();
+	for (int ch = 0; ch < 16; ++ch)
+	{
+		pv->setChSolo(false, ch);
+	}
+	Sample *smp = renderbox->getSample();
+	// Kill record box
+	gui->unregisterOverlayWidget();
+
+	if (renderbox)
+		delete renderbox;
+	// 	renderbox = 0;
+	// }
+	render_ptn_mode = false;
+	// Turn off the mic
+	// CommandMicOff();
+	if (restore_stereo_output)
+		CommandSetStereoOutput(true);
+	// Add instrument if necessary
+	state->instrument = song->getInstruments();
+	
+	Instrument *inst = song->getInstrument(state->instrument);
+
+	if(inst == 0)
+	{
+		inst = new Instrument("render");
+		song->setInstrument(state->instrument, inst);
+
+		lbinstruments->set(state->instrument, inst->getName());
+	}
+	lbinstruments->select(state->instrument);
+	lbinstruments->scrollTo(state->instrument);
+	// Insert the sample into the instrument
+	inst->setSample(state->sample, smp);
+
+	volEnvSetInst(inst);
+
+	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
+
+	handleSampleChange(state->sample);
+	setHasUnsavedChanges(true);
+	
+	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 void handleRenderSampleOK(void)
@@ -2521,6 +2574,7 @@ void handleRenderSampleCancel(void)
 	// CommandMicOff();
 
 	redrawSubScreen();
+	setRecordMode(state->recording);
 	setRecordMode(state->recording);
 }
 
@@ -2969,14 +3023,13 @@ void handleCopy(void)
 void handlePaste(void)
 {
 	if(clipboard != NULL) {
-		int ptn_n_rows = song->getPatternLength(state->potpos);
+		int ptn_n_rows = song->getPatternLength(song->getPotEntry(state->potpos));
 		int n_channels = song->getChannels();
 		u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
 		u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
 
 		if (rows_over > 0 || cols_over > 0) {
 			ntxm_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
-
 			u8 new_height = clipboard->height() - rows_over;
 			u8 new_width = clipboard->width() - cols_over;
 			CellArray *new_i = new CellArray(new_width, new_height);

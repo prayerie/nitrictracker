@@ -174,6 +174,7 @@ void PatternView::setSong(Song *s)
 	song = s;
 	pattern = s->getPattern(song->getPotEntry(state->potpos));
 	hscrollpos = 0;
+	unmuteAll();
 }
 
 void PatternView::setLinesPerBeat(u16 lpb)

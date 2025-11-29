@@ -90,3 +90,9 @@
 89=a2a2d3 ; Piano - full key color 2 (highlight)
 90=690000 ; Piano - half key color 1 (highlight)
 91=9a3838 ; Piano - half key color 2 (highlight)
+92=000000 ; Piano - outline
+93=ffffff ; Text entry background
+94=b2b2e3 ; Text entry keys
+95=000000 ; Text entry key labels
+96=8a8ad3 ; Text entry modifier keys
+97=ffffff ; Text entry pressed keys

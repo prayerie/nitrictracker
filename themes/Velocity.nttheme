@@ -48,7 +48,7 @@
 43=d8d8e0 ; Memory usage: OK
 44=d8d8e0 ; Memory usage: Warning
 45=900000 ; Memory usage: Alert
-46=000000 ; Text entry cursor
+46=7d92aa ; Text entry cursor
 47=000000 ; Sample editor background
 48=181824 ; Sample editor background (selection)
 49=7d92aa ; Sample editor waveform
@@ -82,3 +82,9 @@
 76=181824 ; Pattern - mute/solo gradient 2
 77=282830 ; Pattern - mute/solo gradient 1 (highlight)
 78=3c4044 ; Pattern - mute/solo gradient 2 (highlight)
+93=000000 ; Text entry background
+94=2c3034 ; Text entry keys
+95=ffffff ; Text entry key labels
+96=7d92aa ; Text entry modifier keys
+97=becbdb ; Text entry pressed keys
+95=ffffff ; Text entry key modifier key labels
