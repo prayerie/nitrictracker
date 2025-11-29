@@ -1858,7 +1858,7 @@ void zapUnusedInstruments(void) {
 
 		lbinstruments->set(i, "");
 		if (lbinstruments->getidx() == i) {
-			sampledisplay->setSample(NULL);
+			sampledisplay->setSample(NULL, 0, NO_INSTRUMENT);
 			handleSampleChange(0);
 			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
 				lbsamples->set(i, "");
@@ -1876,7 +1876,7 @@ void zapCurrentInstrument(void) {
 	PrintFreeMem();
 	u8 inst = lbinstruments->getidx();
 	song->zapInstrument(inst);
-	sampledisplay->setSample(NULL);
+	sampledisplay->setSample(NULL, 0, NO_INSTRUMENT);
 	handleSampleChange(0);
 	DC_FlushAll();
 	deleteMessageBox();
@@ -3219,6 +3219,7 @@ void sample_fade_in(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sample_fade_out(void)
@@ -3240,6 +3241,7 @@ void sample_fade_out(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sample_reverse(void)
@@ -3264,6 +3266,7 @@ void sample_reverse(void)
 	DC_FlushAll();
 
 	sampledisplay->setSample(smp, state->sample, state->instrument);
+	setHasUnsavedChanges(true);
 }
 
 void sampleTabBoxChage(u8 tab)
@@ -4832,7 +4835,6 @@ int main(int argc, char **argv) {
 	setupGUI(fat_success);
 
 	startCursorTimer();
-	// u32 *pcursor = (u32*)ntxm_ccalloc(1, sizeof(u32));
 	SampleCursor *scursors = (SampleCursor*)ntxm_ccalloc(MAX_CHANNELS, sizeof(SampleCursor));
 	CommandSetCursorPosPtr(scursors);
 	sampledisplay->setCursorPosPtr((SampleCursor*)memUncached(scursors));
