@@ -95,6 +95,7 @@ class Widget {
 
 		// Draw utility functions
 		void drawString(const char* str, u8 tx, u8 ty, u16 color, u8 maxwidth=255, u8 maxheight=255);
+		void drawSmallString(const char* str, u8 tx, u8 ty, u16 color, u8 maxwidth=255, u8 maxheight=255);
 		void drawBox(u8 tx, u8 ty, u8 tw, u8 th, u16 col);
 		void drawFullBox(u8 tx, u8 ty, u8 tw, u8 th, u16 col);
 		void drawBorder(u16 col);
@@ -105,6 +106,7 @@ class Widget {
 			*(*vram+SCREEN_WIDTH*(y+ty)+x+tx) = col;
 		}
 		void drawGradient(u16 col1, u16 col2, u8 tx, u8 ty, u8 tw, u8 th);
+		void drawVerticalGradient(u16 col1, u16 col2, u8 tx, u8 ty, u8 tw, u8 th);
 
 		inline const u16 interpolateColor(u16 col1, u16 col2, int alpha /* 0..4095 */) {
 			/*

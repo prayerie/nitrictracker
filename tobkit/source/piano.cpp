@@ -49,7 +49,7 @@ void Piano::setTheme(Theme *theme_, u16 bgcolor_) {
 	u16 piano_cols[8] = { theme_->col_piano_full_col1, theme_->col_piano_full_col2, theme_->col_piano_half_col1, theme_->col_piano_half_col2, 
 						theme_->col_piano_full_highlight_col1, theme_->col_piano_full_highlight_col2, theme_->col_piano_half_highlight_col1, theme_->col_piano_half_highlight_col2};
 	genPal(piano_cols, piano_Palette, piano_fullnotehighlight_Palette, piano_halfnotehighlight_Palette);
-	Widget::setTheme(theme_, bgcolor_);
+	Widget::setTheme(theme_, bgcolor_ &~ BIT(15));
 	memcpy(BG_PALETTE_SUB, piano_Palette, 32);
 	memcpy(BG_PALETTE_SUB+16, piano_fullnotehighlight_Palette, 32);
 	memcpy(BG_PALETTE_SUB+32, piano_halfnotehighlight_Palette, 32);
@@ -189,6 +189,7 @@ void Piano::genPal(u16 *piano_cols_base, u16 *pal, u16 *pal_full_highlight, u16 
 
 void Piano::draw(void)
 {
+	if (!is_visible()) return;
 	// Fill screen with empty tiles
 	for (int i = 0; i < 768; i++) map_base[i] = 28;
 	

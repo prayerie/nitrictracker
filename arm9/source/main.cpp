@@ -25,7 +25,7 @@
 // #define SHOW_ALL_SETTINGS
 #define GURU // Show guru meditations
 #define USE_FAT
-// #define ENABLE_EFFECT_MENU
+#define ENABLE_EFFECT_MENU
 
 #include <nds.h>
 #include <nds/arm9/console.h>
@@ -49,6 +49,7 @@
 #include "tobkit/patternview.h"
 #include "tobkit/normalizebox.h"
 #include "tobkit/themeselectorbox.h"
+#include "tobkit/fxkeyboard.h"
 using namespace tobkit;
 
 #include <ntxm/fifocommand.h>
@@ -146,9 +147,10 @@ GUI *gui;
 	BitButton *buttonswitchsub, *buttonplay, *buttonstop, *buttonpause;
 	CheckBox *cbscrolllock;
 	ToggleButton *tbrecord, *tbmultisample;
-	Label *labeladd, *labeloct;
-	NumberBox *numberboxadd, *numberboxoctave;
+	Label *labeladd, *labeloct, *labelfxcat;
+	NumberBox *numberboxadd, *numberboxoctave, *numberboxfxcat;
 	Piano *kb;
+	FXKeyboard *fxkb;
 	ListBox *lbinstruments, *lbsamples;
 	TabBox *tabbox;
 	GradientIcon *pixmaplogo;
@@ -294,13 +296,8 @@ void clearSubScreen(void)
 {
 	u16 col = settings->getTheme()->col_bg;
 	u32 colcol = col | col << 16;
-	// Fill the bg with the bg color except for the place where the keyboard is
-	dmaFillWords(colcol, sub_vram, 256 * 153 * 2);
-	for(int y=153;y<192;++y)
-	{
-		dmaFillWords(0, sub_vram + (256*y), 224 * 2);
-		dmaFillWords(colcol, sub_vram + (256*y) + 224, (256 - 224) * 2);
-	}
+	// Fill the bg with the bg color
+	dmaFillWords(colcol, sub_vram, 256 * 192 * 2);
 }
 
 void drawSampleNumbers(void)
@@ -1267,6 +1264,11 @@ void changeOctave(u8 newoctave)
 		drawSampleNumbers();
 }
 
+void changeFxCategory(u8 newcat)
+{
+	fxkb->setCategory(newcat);
+}
+
 
 void drawMainScreen(void)
 {
@@ -1297,6 +1299,8 @@ void redrawSubScreen(void)
 
 	// Redraw GUI
 	gui->drawSubScreen();
+	// kb->pleaseDraw();
+
 }
 
 
@@ -2017,13 +2021,9 @@ void reloadSkin(void)
 {
 	gui->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
 
-	for (int y = 153; y < 192;++y)
-	{
-		// fill the quirky little square next to the piano
-		u16 col = settings->getTheme()->col_bg;
-		u32 colcol = col | col << 16;
-		dmaFillWords(colcol, sub_vram + (256 * y) + 224, (256 - 224) * 2);
-	}
+	u16 col = settings->getTheme()->col_bg;
+	u32 colcol = col | col << 16;
+	dmaFillWords(colcol, sub_vram, 256 * 150 * 2);
 	gui->draw();
 	redrawSubScreen();
 	redraw_main_requested = true;
@@ -2109,7 +2109,29 @@ void handleSetNoteVol(void)
 
 void handleToggleEffectsVisibility(bool on)
 {
-  pv->toggleEffectsVisibility(on);
+	nseffectcmd->hide();
+	nseffectpar->hide();
+	pv->toggleEffectsVisibility(on);
+	if (on)
+	{
+		kb->hide();
+		numberboxfxcat->show();
+		labelfxcat->show();
+		numberboxoctave->hide();
+		labeloct->hide();
+		fxkb->show();
+	}
+	else
+	{
+		kb->show();
+		fxkb->hide();
+		numberboxfxcat->hide();
+		labelfxcat->hide();
+		numberboxoctave->show();
+		labeloct->show();
+	}
+
+	redrawSubScreen();
 }
 
 // number slider
@@ -3065,6 +3087,12 @@ void setupGUI(bool dldi_enabled)
 	kb = new Piano(0, 152, 224, 40, (uint16*)CHAR_BASE_BLOCK_SUB(0), (uint16*)SCREEN_BASE_BLOCK_SUB(1/*8*/), &sub_vram);
 	kb->registerNoteCallback(handleNoteStroke);
 	kb->registerReleaseCallback(handleNoteRelease);
+	//kb->disable();
+	// kb->hide();
+
+	fxkb = new FXKeyboard(0, 152, &sub_vram, true);
+	gui->registerWidget(fxkb, 0, SUB_SCREEN);
+	gui->registerWidget(kb, 0, MAIN_SCREEN);
 
 	pixmaplogo = new GradientIcon(98, 1, 80, 17,
 		(const u32*) nitrotracker_logo_raw, &sub_vram);
@@ -3596,8 +3624,11 @@ void setupGUI(bool dldi_enabled)
 	labeladd->setCaption("add");
 	labeloct = new Label(206, 126, 25, 12, &sub_vram, false, true);
 	labeloct->setCaption("oct");
+	labelfxcat = new Label(206, 126, 25, 12, &sub_vram, false, true);
+	labelfxcat->setCaption("cat");
 	numberboxadd    = new NumberBox(185, 135, 18, 17, &sub_vram, state->add, 0, 8, 1);
 	numberboxoctave = new NumberBox(206, 135, 18, 17, &sub_vram, state->basenote/12, 0, 6, 1);
+	numberboxfxcat = new NumberBox(206, 135, 18, 17, &sub_vram, 0, 0, 3, 1);
 
 	buttonswitchsub->registerPushCallback(switchScreens);
 	buttonplay->registerPushCallback(startPlay);
@@ -3615,6 +3646,7 @@ void setupGUI(bool dldi_enabled)
 
 	numberboxadd->registerChangeCallback(changeAdd);
 	numberboxoctave->registerChangeCallback(changeOctave);
+	numberboxfxcat->registerChangeCallback(changeFxCategory);
 
 	lbinstruments->registerChangeCallback(handleInstChangeReset);
 	lbsamples->registerChangeCallback(handleSampleChange);
@@ -3655,7 +3687,7 @@ void setupGUI(bool dldi_enabled)
 		buttontransposeup->registerPushCallback(handleTransposeUp);
 
 #ifdef ENABLE_EFFECT_MENU
-		cbtoggleeffects = new CheckBox(195, 32, 30, 12, &main_vram_back, true, true, true);
+		cbtoggleeffects = new CheckBox(157, 138, 30, 12, &sub_vram, true, false, true);
 		cbtoggleeffects->setCaption("fx");
 		cbtoggleeffects->registerToggleCallback(handleToggleEffectsVisibility);
 
@@ -3727,13 +3759,13 @@ void setupGUI(bool dldi_enabled)
 		gui->registerWidget(buttontransposedown, 0, MAIN_SCREEN);
 		gui->registerWidget(buttontransposeup, 0, MAIN_SCREEN);
 #ifdef ENABLE_EFFECT_MENU
-		gui->registerWidget(cbtoggleeffects, 0, MAIN_SCREEN);
-		gui->registerWidget(labeleffectcmd, 0, MAIN_SCREEN);
-		gui->registerWidget(nseffectcmd, 0, MAIN_SCREEN);
-		gui->registerWidget(buttonseteffectcmd, 0, MAIN_SCREEN);
-		gui->registerWidget(labeleffectpar, 0, MAIN_SCREEN);
-		gui->registerWidget(nseffectpar, 0, MAIN_SCREEN);
-		gui->registerWidget(buttonseteffectpar, 0, MAIN_SCREEN);
+		gui->registerWidget(cbtoggleeffects, 0, SUB_SCREEN);
+		// gui->registerWidget(labeleffectcmd, 0, MAIN_SCREEN);
+		// gui->registerWidget(nseffectcmd, 0, MAIN_SCREEN);
+		// gui->registerWidget(buttonseteffectcmd, 0, MAIN_SCREEN);
+		// gui->registerWidget(labeleffectpar, 0, MAIN_SCREEN);
+		// gui->registerWidget(nseffectpar, 0, MAIN_SCREEN);
+		// gui->registerWidget(buttonseteffectpar, 0, MAIN_SCREEN);
 #else
 		pv->toggleEffectsVisibility(false);
 #endif
@@ -3763,8 +3795,10 @@ void setupGUI(bool dldi_enabled)
 	gui->registerWidget(tbmultisample, 0, SUB_SCREEN);
 	gui->registerWidget(numberboxadd, 0, SUB_SCREEN);
 	gui->registerWidget(numberboxoctave, 0, SUB_SCREEN);
+	gui->registerWidget(numberboxfxcat, 0, SUB_SCREEN);
 	gui->registerWidget(labeladd, 0, SUB_SCREEN);
 	gui->registerWidget(labeloct, 0, SUB_SCREEN);
+	gui->registerWidget(labelfxcat, 0, SUB_SCREEN);
 	gui->registerWidget(kb, 0, SUB_SCREEN);
 	gui->registerWidget(buttonstopnote, 0, SUB_SCREEN);
 	gui->registerWidget(tbrecord, 0, SUB_SCREEN);
@@ -3780,6 +3814,7 @@ void setupGUI(bool dldi_enabled)
 	updateTempoAndBpm();
 	handleLinesBeatChange(settings->getLinesPerBeat());
 	setHasUnsavedChanges(false);
+	handleToggleEffectsVisibility(false);
 
 	gui->drawSubScreen(); // GUI
 	drawMainScreen(); // Pattern view. The function also flips buffers

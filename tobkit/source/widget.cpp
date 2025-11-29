@@ -173,6 +173,41 @@ void Widget::drawString(const char* str, u8 tx, u8 ty, u16 color, u8 maxwidth, u
 }
 
 ITCM_CODE
+void Widget::drawSmallString(const char* str, u8 tx, u8 ty, u16 color, u8 maxwidth, u8 maxheight)
+{
+	// // Draw text
+	// u8 charidx, i, j;
+	// u16 drawpos = 0; u8 col;
+
+	// u8 fontheight = font_8x11.height;
+	// u8 height = fontheight;
+	// if (height > maxheight) height = maxheight;
+
+	// while(*str)
+	// {
+	// 	charidx = font_8x11.char_index[(u8) *str];
+	// 	u8 width = font_8x11.char_widths[charidx];
+	// 	if ((drawpos+width) > maxwidth)
+	// 		break;
+
+	// 	for(j=0;j<height;++j) {
+	// 		col = font_8x11.data[fontheight*charidx + j];
+	// 		for(i=0;i<8;++i,col>>=1) {
+	// 			// Print a character from the bitmap font
+	// 			// each char is 8 pixels wide, and 8 pixels
+	// 			// are in a byte.
+	// 			if(col & 1) {
+	// 				drawPixel(i+tx+drawpos, j+ty, color);
+	// 			}
+	// 		}
+	// 	}
+
+	// 	drawpos += width+1;
+	// 	str++;
+	// }
+}
+
+ITCM_CODE
 void Widget::drawBox(u8 tx, u8 ty, u8 tw, u8 th, u16 col)
 {
 	uint_fast8_t i,j;
@@ -332,6 +367,30 @@ void Widget::drawGradient(u16 col1, u16 col2, u8 tx, u8 ty, u8 tw, u8 th) {
 	for(j=0;j<th;++j,pos+=step) {
 		col = interpolateColor(col1, col2, pos);
 		dmaFillHalfWords(col, (*vram+SCREEN_WIDTH*(y+ty+j)+(x+tx)), bw);
+	}
+}
+
+ITCM_CODE
+void Widget::drawVerticalGradient(u16 col1, u16 col2, u8 tx, u8 ty, u8 tw, u8 th) {
+	if (col1 == col2) {
+		drawFullBox(tx, ty, tw, th, col1);
+		return;
+	}
+
+	u8 j, k;
+	u16 col;
+
+	if (th == 0) return;
+
+	int step = div32((1<<12), tw);
+	int pos = 0;
+
+	for(j=0;j<tw;++j,pos+=step) {
+		col = interpolateColor(col1, col2, pos);
+		for (k=0;k<th;++k)
+		{
+			*(*vram+SCREEN_WIDTH*(y+ty+k)+(x+tx+j)) = col;
+		}
 	}
 }
 

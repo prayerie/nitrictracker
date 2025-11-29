@@ -48,6 +48,7 @@ class Piano: public Widget {
 		void setInMappingMode(bool instmap);
 		void setTheme(Theme *theme_, u16 bgcolor_);
 
+
 	private:
 		void (*onNote)(u8);
 		void (*onRelease)(u8, bool);
