@@ -62,9 +62,11 @@ class ListBox: public Widget {
 		void select(u16 idx, bool scroll=true); // set selected element
 		void highlight(s32 idx, bool scroll=true); // set highlighted element, <0 disables
 		void tickFrame(void);
+		u16 getCount(void) { return elements.size(); }
+		void scrollTo(u16 idx);
+
 	protected:
 		void draw(void);
-		void scrollTo(u16 idx);
 		// Calculate height and position of the scroll thingy
 		void calcScrollThingy(void);
 

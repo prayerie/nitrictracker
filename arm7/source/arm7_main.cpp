@@ -82,6 +82,7 @@ int main(int argc, char ** argv) {
 #ifdef MIDI
 	installWifiFIFO();
 #endif
+	installSoundFIFO();
 	installSystemFIFO();
 
 #ifdef MIDI

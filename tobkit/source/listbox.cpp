@@ -278,7 +278,6 @@ void ListBox::tickFrame(void)
 				tickerframe = 0; 
 				
 			tickerframe += 1; 
-			draw(); 
 			
 		}
 }
@@ -386,9 +385,7 @@ void ListBox::draw(void)
 	} else {
 		contentoffset = 0;
 	}
-	char debugtext[256] = { 0 };
 
-	nocashMessage(debugtext);
 	// Content
 	for (i = 0;(i < height / ROW_HEIGHT) && (scrollpos + i < elements.size());++i) {
 		u16 swidth = getStringWidth(elements.at(scrollpos + i).c_str());

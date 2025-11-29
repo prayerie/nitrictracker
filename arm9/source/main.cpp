@@ -43,11 +43,13 @@
 
 // Special tracker widgets
 #include "tobkit/recordbox.h"
+#include "tobkit/renderbox.h"
 #include "tobkit/numbersliderrelnote.h"
 #include "tobkit/envelope_editor.h"
 #include "tobkit/sampledisplay.h"
 #include "tobkit/patternview.h"
 #include "tobkit/normalizebox.h"
+#include "tobkit/lowpassbox.h"
 #include "tobkit/themeselectorbox.h"
 using namespace tobkit;
 
@@ -97,6 +99,7 @@ using namespace tobkit;
 #include "sampleedit_trim_raw.h"
 #include "sampleedit_reverse_raw.h"
 #include "sampleedit_record_raw.h"
+#include "sampleedit_bounce_raw.h"
 #include "sampleedit_normalize_raw.h"
 #include "sampleedit_lpf_raw.h"
 #include "sampleedit_hpf_raw.h"
@@ -182,7 +185,9 @@ GUI *gui;
 
 // <Sample Gui>
 	RecordBox *recordbox;
+	RenderBox *renderbox;
 	NormalizeBox *normalizeBox;
+	LowpassBox* lowpassBox;
 	SampleDisplay *sampledisplay;
 	TabBox *sampletabbox;
 
@@ -192,7 +197,7 @@ GUI *gui;
 
 	Label *labelsampleedit_select, *labelsampleedit_edit, *labelsampleedit_record, *labelsampleedit_filter;
 	BitButton *buttonsmpfadein, *buttonsmpfadeout, *buttonsmpselall, *buttonsmpselnone, *buttonsmpseldel,
-		*buttonsmpreverse, *buttonrecord, *buttonsmpnormalize, *buttonsmptrim, * buttonsmplpf, * buttonsmphpf;
+		*buttonsmpreverse, *buttonrecord, *buttonbounce, *buttonrender, *buttonsmpnormalize, *buttonsmptrim, * buttonsmplpf, * buttonsmphpf;
 
 	GroupBox *gbsampleloop;
 	RadioButton::RadioButtonGroup *rbg_sampleloop;
@@ -244,6 +249,7 @@ GUI *gui;
 	Typewriter *tw;
 	MessageBox *mb;
 // </Things that suddenly pop up>
+
 
 u16 *b1n, *b1d;
 int lastx, lasty;
@@ -360,6 +366,7 @@ static void handleNoteAdvanceRow(void)
 		state->setCursorRow(row);
 	}
 }
+bool restore_stereo_output = false;
 
 static Cell getChangedNote(Cell cell, u8 note)
 {
@@ -503,7 +510,7 @@ void handleNoteStroke(u8 note)
 		dsmi_write(NOTE_ON | midichannel, state->basenote + note, 127);
 #endif
 }
-
+u16 render_max = 0;
 void handleNoteRelease(u8 note, bool moved)
 {
 	if (note == EMPTY_NOTE || note == STOP_NOTE) return;
@@ -640,6 +647,8 @@ void handleSampleChange(const u16 newsample)
 	buttonsmptrim->set_enabled(smp != NULL);
 	cbsnapto0xing->set_enabled(smp != NULL);
 	buttonsmpdraw->set_enabled(smp != NULL);
+	buttonsmphpf->set_enabled(smp != NULL);
+	buttonsmplpf->set_enabled(smp != NULL);
 
 	lbsamples->select(newsample);
 
@@ -812,6 +821,7 @@ void cursorTimerHandler(void)
 {
 	if (sampledisplay != NULL)
 		sampledisplay->calcCursor(getTicks());
+
 }
 
 void startCursorTimer(void)
@@ -1067,6 +1077,7 @@ void handleLoad(void)
 	const char *fn = file->name.c_str();
 	if(strcasecmp(fn + strlen(fn) - 3, ".xm")==0)
 	{
+		pv->clearSelection();
 		stopPlay();
 
 		if (state->unsaved_changes) {
@@ -2255,6 +2266,7 @@ void handleTransposeDown(void)
 	u16 keysheld = keysHeld();
 	handleTranspose((keysheld & mykey_R) ? -12 : -1);
 }
+bool render_ptn_mode = false;
 
 // number slider
 void handleNoteVolumeChanged(s32 vol)
@@ -2415,6 +2427,54 @@ void showTypewriterForSampleRename(void)
 	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, deleteTypewriter);
 }
 
+void handleRenderSampleOK(void)
+{
+	pausePlay();
+	for (int ch = 0; ch < 16; ++ch)
+	{
+		pv->setChSolo(false, ch);
+	}
+	Sample *smp = renderbox->getSample();
+	// Kill record box
+	gui->unregisterOverlayWidget();
+
+	if (renderbox)
+		delete renderbox;
+	// 	renderbox = 0;
+	// }
+	render_ptn_mode = false;
+	// Turn off the mic
+	// CommandMicOff();
+	if (restore_stereo_output)
+		CommandSetStereoOutput(true);
+	// Add instrument if necessary
+	state->instrument = song->getInstruments();
+	
+	Instrument *inst = song->getInstrument(state->instrument);
+
+	if(inst == 0)
+	{
+		inst = new Instrument("render");
+		song->setInstrument(state->instrument, inst);
+
+		lbinstruments->set(state->instrument, inst->getName());
+	}
+	lbinstruments->select(state->instrument);
+	lbinstruments->scrollTo(state->instrument);
+	// Insert the sample into the instrument
+	inst->setSample(state->sample, smp);
+
+	volEnvSetInst(inst);
+
+	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
+
+	handleSampleChange(state->sample);
+	setHasUnsavedChanges(true);
+	
+	redrawSubScreen();
+	setRecordMode(state->recording);
+}
+
 void handleRecordSampleOK(void)
 {
 	Sample *smp = recordbox->getSample();
@@ -2427,6 +2487,7 @@ void handleRecordSampleOK(void)
 	CommandMicOff();
 
 	// Add instrument if necessary
+
 	Instrument *inst = song->getInstrument(state->instrument);
 
 	if(inst == 0)
@@ -2446,6 +2507,19 @@ void handleRecordSampleOK(void)
 
 	handleSampleChange(state->sample);
 	setHasUnsavedChanges(true);
+	redrawSubScreen();
+	setRecordMode(state->recording);
+}
+
+void handleRenderSampleCancel(void)
+{
+	// Kill record box
+	gui->unregisterOverlayWidget();
+	delete renderbox;
+
+	// Turn off the mic
+	// CommandMicOff();
+
 	redrawSubScreen();
 	setRecordMode(state->recording);
 }
@@ -2492,6 +2566,124 @@ void handleRecordSample(void)
 	gui->registerOverlayWidget(recordbox, KEY_A | KEY_B, SUB_SCREEN);
 
 	recordbox->reveal();
+
+}
+void bufSwap(void)
+{
+	u16 myrow = state->getPlaybackRow();
+	swiWaitForVBlank();
+	drawMainScreen();
+	if (myrow >= render_max + 2)
+		{
+			renderbox->stop = true;
+			pausePlay();
+		}
+	renderbox->buttonPress(keysHeld());
+}
+
+void doPlaySong(void)
+{
+	if (!render_ptn_mode)
+	{
+		u16 sel_x1, sel_y1, sel_x2, sel_y2;
+		uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+		for (int ch = 0; ch < 16; ++ch)
+		{
+			if (ch >= sel_x1 && ch <= sel_x2)
+				pv->setChSolo(true, ch);
+		}
+		handleRowChangeFromSong(sel_y1);
+	}
+	else
+	{
+		handleRowChangeFromSong(0);
+	}
+
+	startPlay();
+}
+
+
+void startRenderSample(void)
+{
+	if (renderbox == 0) return;
+
+	restore_stereo_output = settings->getStereoOutput();
+	CommandSetStereoOutput(false);
+	renderbox->startRecording();
+}
+
+
+
+void handleRenderSample(void)
+{
+	u16 sel_x1, sel_y1, sel_x2, sel_y2;
+	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+	u16 new_y2 = std::min(song->getPatternLength(song->getPotEntry(state->potpos)), sel_y2);
+
+	u16 newnewy2 = std::max(sel_y1, new_y2);
+	u16 newnewy1 = std::min(sel_y1, new_y2);
+	bool ptnn = false;
+
+	if (sel_y1 == sel_y2)
+	{
+		ptnn = true;
+		newnewy1 = 0;
+		newnewy2 = song->getPatternLength(song->getPotEntry(state->potpos)) - 1;
+		render_ptn_mode = true;
+	}
+	
+	pausePlay();
+
+	
+
+	
+
+	render_max = newnewy2;
+	if (sel_y1 == sel_y2)
+	{
+		render_max = song->getPatternLength(song->getPotEntry(state->potpos)) - 1;
+	}
+	u32 dur = (song->getMsPerRow() * ((u32)newnewy2 - (u32)newnewy1)) >> 16;
+
+	if (dur >= 12000)
+	{
+		if (ptnn)
+		{
+			showMessage("pattern too long!", true);
+		}
+		else
+		{
+			showMessage("selection too long!", true);
+		}
+		return;
+	}
+	// Check RAM first!
+	void *testbuf = ntxm_cmalloc(1 * (RENDERBOX_SAMPLING_FREQ * dur) / 1000);
+	if(testbuf == 0)
+	{
+		showMessage("not enough ram free!", true);
+		return;
+	}
+
+	ntxm_free(testbuf);
+
+	// Turn on the mic
+	// CommandMicOn();
+
+	// Get sample
+	Sample *smp = 0;
+	Instrument *inst = song->getInstrument(song->getInstruments());
+
+
+	// Show record box
+
+	
+	
+
+	renderbox = new RenderBox(&sub_vram, handleRenderSampleOK, bufSwap, doPlaySong, startRenderSample, handleRenderSampleCancel, smp, inst, state->sample, 12000, ptnn);
+
+	gui->registerOverlayWidget(renderbox, KEY_A | KEY_B, SUB_SCREEN);
+	renderbox->reveal();
 
 }
 
@@ -2570,7 +2762,7 @@ void handleLowpassOk(void)
 		endsample = sample->getNSamples() - 1;
 	}
 
-	sample->lowpass(startsample, endsample, cutoff);
+	sample->lowpass(startsample, endsample, cutoff, 5);
 
 	gui->unregisterOverlayWidget();
 	delete lowpassBox;
@@ -2584,6 +2776,10 @@ void handleLowpassCancel(void)
 	redrawSubScreen();
 }
 
+void sample_show_highpass_window(void)
+{
+	showMessage("no highpass yet!", true);
+}
 void sample_show_lowpass_window(void)
 {
 	Instrument* inst = song->getInstrument(state->instrument);
@@ -2683,7 +2879,7 @@ void switchScreens(void)
 {
 	lcdSwap();
 	gui->switchScreens();
-	pv->clearSelection();
+	//pv->clearSelection();
 	redraw_main_requested = false;
 	drawMainScreen();
 }
@@ -2732,7 +2928,7 @@ void showMessage(const char *msg, bool error)
 void showAboutBox(void)
 {
 	char msg[256];
-	snprintf(msg, 256, "NitrousTracker " VERSION " (" GIT_HASH ")");
+	snprintf(msg, 256, "NitricTracker " VERSION " (" GIT_HASH ")");
 	mb = new MessageBox(&sub_vram, msg, 2, "track on!", deleteMessageBox, "exit", showExitBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
@@ -3521,17 +3717,20 @@ void setupGUI(bool dldi_enabled)
 	sampletabbox->registerTabChangeCallback(sampleTabBoxChage);
 
 	// <Sample editing>
-		labelsampleedit_record = new Label(18, 99, 21, 30, &sub_vram, true);
+	labelsampleedit_record = new Label(18, 99, 21, 48, &sub_vram, true);
 	labelsampleedit_record->setCaption("rec");
 
 	buttonrecord = new BitButton(20, 110, 17, 17, &sub_vram, sampleedit_record_raw);
 	buttonrecord->registerPushCallback(handleRecordSample);
 
+	buttonrender = new BitButton(20, 128, 17, 17, &sub_vram, sampleedit_bounce_raw);
+	buttonrender->registerPushCallback(handleRenderSample);
+
 	labelsampleedit_select = new Label(38, 99, 21, 48, &sub_vram, true);
 	labelsampleedit_select->setCaption("sel");
 
 	buttonsmpselall = new BitButton(40, 110, 17, 17, &sub_vram, sampleedit_all_raw);
-	buttonsmpselall->registerPushCallback(sample_show_lowpass_window);
+	buttonsmpselall->registerPushCallback(sample_select_all);
 
 	buttonsmpselnone = new BitButton(40, 128, 17, 17, &sub_vram, sampleedit_none_raw);
 	buttonsmpselnone->registerPushCallback(sample_clear_selection);
@@ -3558,20 +3757,21 @@ void setupGUI(bool dldi_enabled)
 	buttonsmpnormalize = new BitButton(96, 110, 17, 17, &sub_vram, sampleedit_normalize_raw);
 	buttonsmpnormalize->registerPushCallback(sample_show_normalize_window);
 
-	labelsampleedit_filter = new Label(114, 99, 21, 48, &sub_vram, true);
+	labelsampleedit_filter = new Label(114, 99, 21, 30, &sub_vram, true);
 	labelsampleedit_filter->setCaption("flt");
 
 	buttonsmplpf = new BitButton(116, 110, 17, 17, &sub_vram, sampleedit_lpf_raw);
 	buttonsmplpf->registerPushCallback(sample_show_lowpass_window);
 	buttonsmphpf = new BitButton(116, 128, 17, 17, &sub_vram, sampleedit_hpf_raw);
-	buttonsmphpf->registerPushCallback(sample_crop_selection);
+	buttonsmphpf->registerPushCallback(sample_show_highpass_window);
 	sampletabbox->registerWidget(buttonrecord, 0, 0);
+	sampletabbox->registerWidget(buttonrender, 0, 0);
 	sampletabbox->registerWidget(buttonsmpselall, 0, 0);
 	sampletabbox->registerWidget(buttonsmpselnone, 0, 0);
 	sampletabbox->registerWidget(buttonsmpseldel, 0, 0);
 	sampletabbox->registerWidget(buttonsmptrim, 0, 0);
 	sampletabbox->registerWidget(buttonsmplpf, 0, 0);
-	sampletabbox->registerWidget(buttonsmphpf, 0, 0);
+	// sampletabbox->registerWidget(buttonsmphpf, 0, 0);
 
 	sampletabbox->registerWidget(buttonsmpfadein, 0, 0);
 	sampletabbox->registerWidget(buttonsmpfadeout, 0, 0);
@@ -4246,6 +4446,10 @@ void VblankHandler(void)
 		if (framee % 12 == 0)
 		{
 			fileselector->tickFrame();
+			if (fileselector->is_Exposed() && mb == NULL && normalizeBox == NULL && lowpassBox == NULL && fbtheme == NULL)
+			{
+				fileselector->pleaseDraw();
+			}
 		}
 	}
 	if(keysdown & KEY_TOUCH)
@@ -4459,10 +4663,12 @@ int main(int argc, char **argv) {
 	setBrightness(3, 16);
 #endif
 
+
 	powerOn(POWER_ALL_2D);
 
 	// Adjust screens so that the main screen is the top screen
 	lcdMainOnTop();
+	nocashMessage("HERE");
 
 	// Main screen: Text and double buffer ERB
 	videoSetMode(MODE_5_2D | DISPLAY_BG0_ACTIVE | DISPLAY_BG2_ACTIVE);

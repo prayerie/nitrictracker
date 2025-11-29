@@ -100,7 +100,7 @@ class PatternView: public Widget {
 		void penUp(u8 px, u8 py);
 		void penMove(u8 px, u8 py);
 		void buttonPress(u16 button);
-		
+		void setChSolo(bool solo, u8 ch);
 		void updateSelection(void);
 		
 		// Fills the parameters with the selection coordinates. Returns true if no selection exists.

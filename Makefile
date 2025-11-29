@@ -12,7 +12,7 @@ NAME		:= nitroustracker
 export VERSION		?= 0.5.1
 export GIT_HASH		:= $(shell git rev-parse --short HEAD)
 
-GAME_TITLE	:= NitrousTracker
+GAME_TITLE	:= NitricTracker
 GAME_AUTHOR	:= v$(VERSION)
 GAME_ICON	:= icon.bmp
 

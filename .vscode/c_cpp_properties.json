@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/opt/blocksds/core/libs/libnds/include",
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "cStandard": "c17"
+        }
+    ],
+    "version": 4
+}

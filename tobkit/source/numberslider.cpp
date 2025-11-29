@@ -86,10 +86,12 @@ void NumberSlider::penMove(u8 px, u8 py)
 	if (!enabled) return;
 
 	s16 dy = lasty-py;
+	u16 chg = max > 500 ? 25 : 1;
 	if(abs(dy)>1) {
 		int inc = dy*dy/8;
+		inc *= chg;
 		if(inc == 0)
-				inc = 1;
+				inc = chg;
 		if(dy < 0)
 			inc = -inc;
 
@@ -187,7 +189,7 @@ void NumberSlider::draw(void)
 	
 	// Number display
 	drawFullBox(9,1,width-10,height-2,theme->col_lighter_bg);
-	char numberstr[5];
+	char numberstr[8];
 	if (is_8bit)
 	{
 		snprintf(numberstr, sizeof(numberstr), hex ? "%2hhx" : "%3hhd", (int)value);

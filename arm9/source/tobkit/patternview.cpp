@@ -114,6 +114,12 @@ void PatternView::buttonPress(u16 button)
 
 }
 
+void PatternView::setChSolo(bool solo, u8 ch)
+{
+	solo_channels[ch] = solo;
+	callMuteCallback();
+}
+
 void PatternView::updateSelection(void)
 {
 	if(pen_down == false) return;
