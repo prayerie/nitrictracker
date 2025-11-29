@@ -1965,6 +1965,33 @@ void setEffectCommand(u16 eff)
 	}
 }
 
+void setEffectParamIfEmpty(u16 eff_par)
+{
+	u16 sel_x1, sel_y1, sel_x2, sel_y2;
+	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+    CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
+
+	bool changed = false;
+    if (fill != NULL && fill->valid())
+    {
+		for (u16 chn = sel_x1; chn <= sel_x2; chn++)
+			for (u16 row = sel_y1; row <= sel_y2; row++)
+			{
+				Cell cell = song->getPattern(song->getPotEntry(state->potpos))[chn][row];
+				if (cell.effect_param == 0x00 || cell.effect_param == 0xff)
+				{
+					cell.effect_param = eff_par;
+					*fill->ptr(chn - sel_x1, row - sel_y1) = cell;
+					changed = true;
+				} 
+			}
+		if (changed)
+			action_buffer->add(song, new MultipleCellSetAction(state, sel_x1, sel_y1, fill, false));
+
+		redraw_main_requested = true;
+	}
+}
+
 void setEffectParam(u16 eff_par)
 {
 	u16 sel_x1, sel_y1, sel_x2, sel_y2;
@@ -2139,22 +2166,33 @@ void handleEffectCommandChanged(s32 eff)
 	setEffectCommand(eff);
 }
 
+void fxVal(u8 val)
+{
+	if (val == 0xff) return; // no command
+
+	setEffectCommand(val);
+	setEffectParamIfEmpty(fxkb->getParam());
+	
+	handleNoteAdvanceRow();
+}
+
+
 // button
 void handleSetEffectCommand(void)
 {
 	setEffectCommand(nseffectcmd->getValue());
 }
 
-// number slider
-// void handleEffectParamChanged(u8 eff_par)
-// {
-// 	setEffectParam(eff_par);
-// }
+void handleEffectParamChanged(u8 eff_par)
+{
+	setEffectParam(eff_par);
+}
 
 // button
-void handleSetEffectParam(u8 effpar)
+void handleSetEffectParam(void)
 {
-	setEffectParam(effpar);
+	setEffectParam(fxkb->getParam());
+	handleNoteAdvanceRow();
 }
 
 void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
@@ -3079,13 +3117,6 @@ void sampleDrawToggle(bool on)
 #define RIGHT_SIDE_BUTTON_WIDTH 30
 #define RIGHT_SIDE_BUTTON_X 225
 
-void fxVal(u8 val)
-{
-	if (val == 0xff) return; // no command
-
-	setEffectCommand(val);
-	handleNoteAdvanceRow();
-}
 
 void setupGUI(bool dldi_enabled)
 {
@@ -3098,7 +3129,7 @@ void setupGUI(bool dldi_enabled)
 	//kb->disable();
 	// kb->hide();
 
-	fxkb = new FXKeyboard(0, 152, &sub_vram, fxVal, handleSetEffectParam, true);
+	fxkb = new FXKeyboard(0, 152, &sub_vram, fxVal, handleEffectParamChanged, handleSetEffectParam, true);
 	gui->registerWidget(fxkb, 0, SUB_SCREEN);
 	gui->registerWidget(kb, 0, MAIN_SCREEN);
 
@@ -3704,17 +3735,6 @@ void setupGUI(bool dldi_enabled)
 
 		nseffectcmd	= new NumberSlider(196, 54, 28, 17, &main_vram_back, 0, -1, 26, true, true);
 		nseffectcmd->registerPostChangeCallback(handleEffectCommandChanged);
-
-		buttonseteffectcmd = new Button(196, 70, 28, 12, &main_vram_back);
-		buttonseteffectcmd->setCaption("set");
-		buttonseteffectcmd->registerPushCallback(handleSetEffectCommand);
-
-		
-
-		
-
-		buttonseteffectpar = new Button(196, 110, 28, 12, &main_vram_back);
-		buttonseteffectpar->setCaption("set");
 		// buttonseteffectpar->registerPushCallback(handleSetEffectParam);
 #endif
 

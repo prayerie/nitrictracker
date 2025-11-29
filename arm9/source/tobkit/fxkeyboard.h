@@ -19,6 +19,7 @@ limitations under the License.
 
 #include "tobkit/widget.h"
 #include "fxbutton.h"
+#include "tobkit/button.h"
 #include "tobkit/digitbox.h"
 #include "tobkit/label.h"
 #include "tobkit/gui.h"
@@ -37,7 +38,7 @@ namespace tobkit {
 	
 class FXKeyboard: public Widget {
 	public:
-		FXKeyboard(u8 _x, u8 _y, u16 **_vram, void (*onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 effparam), bool _visible=true);
+		FXKeyboard(u8 _x, u8 _y, u16 **_vram, void (*onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), bool _visible=true);
 	
 		~FXKeyboard();
 
@@ -53,6 +54,8 @@ class FXKeyboard: public Widget {
 		void setCaption(const char *caption);
 		void setCategory(u8 newcat);
 		void setTheme(Theme *theme_, u16 bgcolor_);
+
+		u8 getParam(void);
 		// void reveal(void);
 		// void show(void);
 		void hide(void);
@@ -60,6 +63,7 @@ class FXKeyboard: public Widget {
 		FXButton *fx0, *fx1, *fx2, *fx3, *fx4, *fx5, *fx6, *fx7, *fx8, *fx9, *fxa, *fxb, *fxc, *fxd, *fxf;
 		DigitBox *effectpar;
 		Label *labeleffectpar;
+		Button *buttonseteffectpar;
 		std::vector<FXButton*> fxbuttons = { fx0, fx1, fx2, fx3, fx4, fx5, fx6, fx7, fx8, fx9, fxa, fxb, fxc, fxd, fxf };
 		std::vector<const char*> fxlabels = { "00G+", "11H-", "22KD", "33LL", "44PM", "55RP", "66TR", "77XS", "88 U", "99 V", "aa  ", "bb  ", "cc  ", "dd  ", "fe  ",};
 		// the fx command each key will input per category
@@ -71,6 +75,7 @@ class FXKeyboard: public Widget {
 		
 		void (*onFxKeypress)(u8 val);
 		void (*onParamChange)(u8 val);
+		void (*onParamSet)(void);
 		void draw(void);
 		char *caption;
 		GUI gui;

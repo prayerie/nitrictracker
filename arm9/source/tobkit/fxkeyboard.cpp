@@ -24,9 +24,10 @@ using namespace tobkit;
 
 /* ===================== PUBLIC ===================== */
 
-FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 effparam), bool _visible)
+
+FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), bool _visible)
 	:Widget(_x, _y, FXKEYBOARD_WIDTH, FXKEYBOARD_HEIGHT, _vram, _visible),
-	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange)
+	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange), onParamSet(_onParamSet)
 {
 	for (int i = 0; i < NUM_FXKEYS; ++i)
 	{
@@ -38,13 +39,19 @@ FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pr
 		gui.registerWidget(fxbuttons.at(i));
 	}
 
-	labeleffectpar = new Label(186, 158, 38, 10, vram, false, true);
+	labeleffectpar = new Label(186, 153, 38, 10, vram, false, true);
 	labeleffectpar->setCaption("param");
 	gui.registerWidget(labeleffectpar);
 
-	effectpar	= new DigitBox(186, 170, 35, 17, vram, 0, 0, 255, 2);
+	effectpar	= new DigitBox(186, 164, 35, 17, vram, 0, 0, 255, 2);
 	effectpar->registerChangeCallback(onParamChange);
 	gui.registerWidget(effectpar);
+
+	buttonseteffectpar = new Button(186, 180, 35, 10, vram);
+	buttonseteffectpar->setCaption("set");
+	buttonseteffectpar->registerPushCallback(onParamSet);
+
+	gui.registerWidget(buttonseteffectpar);
 
 	setCategory(0);
 }
@@ -60,6 +67,7 @@ FXKeyboard::~FXKeyboard()
 
 	delete labeleffectpar;
 	delete effectpar;
+	delete buttonseteffectpar;
 }
 
 void FXKeyboard::hide(void)
@@ -91,7 +99,10 @@ void FXKeyboard::buttonPress(u16 button) {
 	gui.buttonPress(button);
 }
 
-
+u8 FXKeyboard::getParam(void)
+{
+	return effectpar->getValue();
+}
 
 void FXKeyboard::setCategory(u8 newcat) {
 	for (int i=0; i<NUM_FXKEYS; ++i)
@@ -116,15 +127,18 @@ void FXKeyboard::setCategory(u8 newcat) {
 		break;
 
 		case FX_CATEGORY_E:
-		setCaption("Exy: extended commands");
+		//setCaption("Exy: extended commands");
+		setCaption("these buttons do nothing currently");
 		break;
 
 		case FX_CATEGORY_FT:
-		setCaption("Xxy: sdfoghdfjghlshjdf");
+		//setCaption("Xxy: sdfoghdfjghlshjdf");
+		setCaption("these buttons do nothing currently");
 		break;
 
 		case FX_CATEGORY_VOL:
-		setCaption("volume commands");
+		//setCaption("volume commands");
+		setCaption("these buttons do nothing currently");
 		break;
 	}
 }
