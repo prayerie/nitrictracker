@@ -748,7 +748,8 @@ void updateTempoAndBpm(void)
 void setSong(Song *newsong)
 {
 	song = newsong;
-	char *str = (char*) ntxm_ccalloc(1, 256);
+	char str[256];
+	str[255] = 0;
 
 	CommandSetSong(song);
 
@@ -765,34 +766,30 @@ void setSong(Song *newsong)
 	// Update POT
 	lbpot->clear();
 	u8 potentry;
-	for(u8 i=0;i<song->getPotLength();++i) {
+	for(int i=0;i<song->getPotLength();++i) {
 		potentry = song->getPotEntry(i);
-		snprintf(str, 255, "%2x", potentry);
+		snprintf(str, sizeof(str)-1, "%2x", potentry);
 		lbpot->add(str);
 	}
 
 	// Update instrument list
 	Instrument *inst;
-	for(u8 i=0;i<MAX_INSTRUMENTS;++i)
+	for(int i=MAX_INSTRUMENTS-1;i>=0;i--)
 	{
 		inst = song->getInstrument(i);
 		if(inst!=NULL) {
-			strncpy(str, inst->getName(), 255);
+			strncpy(str, inst->getName(), sizeof(str)-1);
 			lbinstruments->set(i, str);
 		} else {
 			lbinstruments->set(i, "");
 		}
 	}
-
+	
+	// inst is now equal to song->getInstrument(0)
 	lbinstruments->select(0);
-
-	updateSampleList(song->getInstrument(0));
-
-	inst = song->getInstrument(0);
+	updateSampleList(inst);
 	handleSampleChange(0);
-		
-
-	volEnvSetInst(song->getInstrument(0));
+	volEnvSetInst(inst);
 
 	if(inst != 0)
 	{
@@ -819,11 +816,9 @@ void setSong(Song *newsong)
 		sampledisplay->setSample(inst->getSample(state->sample));
 	}
 
-
-	strncpy(str, song->getName(), 255);
+	strncpy(str, song->getName(), sizeof(str)-1);
 	labelsongname->setCaption(str);
 
-	ntxm_free(str);
 	mod_loading = false;
 	setHasUnsavedChanges(false);
 	drawMainScreen();
