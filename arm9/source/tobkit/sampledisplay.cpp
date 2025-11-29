@@ -262,7 +262,7 @@ void SampleDisplay::calcCursor(u32 n_ticks)
 
 		if (cursorpos[chn].instidx == 255 || !(cursorpos[chn].active)) continue;
 		SampleCursor *playingNote = &cursorpos[chn];
-		\
+		
 		const u32 real_n_ticks = 10;
 
 		playingNote->last_ticks = n_ticks;
@@ -323,7 +323,6 @@ void SampleDisplay::calcCursor(u32 n_ticks)
 void SampleDisplay::drawCursor(void)
 {
 	if (smp == 0 || !isExposed()) return;
-
 	for (int chn = 0; chn < 16; ++chn)
 	{
 		SampleCursor playingNote = cursorpos[chn];
@@ -352,9 +351,7 @@ void SampleDisplay::drawCursor(void)
 				// backup pixels that were underneath the cursor
 				// we could just draw one line of the waveform, but that
 				// doesn't account for the zoom buttons or loop handles
-				if (last_cursor_draw_x[chn] != (u32)draw_at_x) {
-					last_cursor_draw_x[chn] = (u32)draw_at_x;
-				}
+				last_cursor_draw_x[chn] = (u32)draw_at_x;
 
 				// ...and finally, draw the cursor itself
 				if (!(draw_at_x >= width + 1) && draw_at_x != 0) {
