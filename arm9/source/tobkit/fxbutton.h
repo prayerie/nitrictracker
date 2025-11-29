@@ -40,7 +40,7 @@ class FXButton: public Widget {
 		~FXButton();
 		
 		// Callback registration
-		void registerPushCallback(void (*onPush_)(void));
+		void registerPushCallback(void (*onPush_)(u8 val));
 		
 		// Drawing request
 		void pleaseDraw(void);
@@ -51,13 +51,14 @@ class FXButton: public Widget {
 		void penMove(u8 x, u8 y);
 		void buttonPress(u16 button);
 		void setCategory(u8 newcat);
+		void setValue(u8 newval);
 
 		inline bool isPenDown(void) const { return penIsDown; }
 		void setCaption(const char *caption);
 		void setSmallCaption(const char *small_caption);
 		
 	private:
-		void (*onPush)(void);
+		void (*onPush)(u8 val);
 		bool penIsDown;
 		
 		void draw(u8 down);

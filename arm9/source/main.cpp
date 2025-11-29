@@ -234,7 +234,7 @@ GUI *gui;
 	Button *buttontransposedown, *buttontransposeup;
 	BitButton *buttonundo, *buttonredo;
 	PatternView *pv;
-	NumberSlider *nsnotevolume, *nseffectcmd, *nseffectpar;
+	NumberSlider *nsnotevolume, *nseffectcmd;
 	Label *labelnotevol, *labeleffectcmd, *labeleffectpar, *labeltranspose;
 	CheckBox *cbtoggleeffects;
 // </Main Screen>
@@ -2110,7 +2110,6 @@ void handleSetNoteVol(void)
 void handleToggleEffectsVisibility(bool on)
 {
 	nseffectcmd->hide();
-	nseffectpar->hide();
 	pv->toggleEffectsVisibility(on);
 	if (on)
 	{
@@ -2147,16 +2146,17 @@ void handleSetEffectCommand(void)
 }
 
 // number slider
-void handleEffectParamChanged(s32 eff_par)
-{
-	setEffectParam(eff_par);
-}
+// void handleEffectParamChanged(u8 eff_par)
+// {
+// 	setEffectParam(eff_par);
+// }
 
 // button
-void handleSetEffectParam(void)
+void handleSetEffectParam(u8 effpar)
 {
-	setEffectParam(nseffectpar->getValue());
+	setEffectParam(effpar);
 }
+
 void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
 {
     // TODO: Migrate to new TobKit to eliminate such ugliness
@@ -3079,6 +3079,14 @@ void sampleDrawToggle(bool on)
 #define RIGHT_SIDE_BUTTON_WIDTH 30
 #define RIGHT_SIDE_BUTTON_X 225
 
+void fxVal(u8 val)
+{
+	if (val == 0xff) return; // no command
+
+	setEffectCommand(val);
+	handleNoteAdvanceRow();
+}
+
 void setupGUI(bool dldi_enabled)
 {
 	gui = new GUI();
@@ -3090,7 +3098,7 @@ void setupGUI(bool dldi_enabled)
 	//kb->disable();
 	// kb->hide();
 
-	fxkb = new FXKeyboard(0, 152, &sub_vram, true);
+	fxkb = new FXKeyboard(0, 152, &sub_vram, fxVal, handleSetEffectParam, true);
 	gui->registerWidget(fxkb, 0, SUB_SCREEN);
 	gui->registerWidget(kb, 0, MAIN_SCREEN);
 
@@ -3701,15 +3709,13 @@ void setupGUI(bool dldi_enabled)
 		buttonseteffectcmd->setCaption("set");
 		buttonseteffectcmd->registerPushCallback(handleSetEffectCommand);
 
-		labeleffectpar = new Label(200, 84, 23, 10, &main_vram_back, false, true);
-		labeleffectpar->setCaption("val");
+		
 
-		nseffectpar	= new NumberSlider(196, 94, 28, 17, &main_vram_back, 0, 0, 255, true, true);
-		nseffectpar->registerPostChangeCallback(handleEffectParamChanged);
+		
 
 		buttonseteffectpar = new Button(196, 110, 28, 12, &main_vram_back);
 		buttonseteffectpar->setCaption("set");
-		buttonseteffectpar->registerPushCallback(handleSetEffectParam);
+		// buttonseteffectpar->registerPushCallback(handleSetEffectParam);
 #endif
 
 		//buttoncut         = new BitButton(232,  52, 22, 21, &main_vram_back, icon_cut_raw, 16, 16, 3, 2);
@@ -3764,7 +3770,7 @@ void setupGUI(bool dldi_enabled)
 		// gui->registerWidget(nseffectcmd, 0, MAIN_SCREEN);
 		// gui->registerWidget(buttonseteffectcmd, 0, MAIN_SCREEN);
 		// gui->registerWidget(labeleffectpar, 0, MAIN_SCREEN);
-		// gui->registerWidget(nseffectpar, 0, MAIN_SCREEN);
+		// gui->registerWidget(nseffectpar, 0, SUB_SCREEN);
 		// gui->registerWidget(buttonseteffectpar, 0, MAIN_SCREEN);
 #else
 		pv->toggleEffectsVisibility(false);

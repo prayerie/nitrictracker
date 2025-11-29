@@ -14,31 +14,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ======================================================================*/
 
-#ifndef _TOBKIT_H_
-#define _TOBKIT_H_
+#ifndef DIGITBOX_H
+#define DIGITBOX_H
 
-#include "platform.h"
-#include "bitbutton.h"
-#include "button.h"
-#include "checkbox.h"
-#include "fileselector.h"
-#include "gradienticon.h"
-#include "groupbox.h"
-#include "gui.h"
-#include "piano.h"
-#include "label.h"
-#include "listbox.h"
-#include "memoryindicator.h"
-#include "messagebox.h"
-#include "numberbox.h"
-#include "digitbox.h"
-#include "numberslider.h"
-#include "pixmap.h"
-#include "radiobutton.h"
-#include "tabbox.h"
-#include "theme.h"
-#include "togglebutton.h"
-#include "typewriter.h"
 #include "widget.h"
+#include <nds.h>
+
+namespace tobkit {
+
+class DigitBox: public Widget {
+	public:
+		DigitBox(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, u8 _value=0, u8 _min=0, u8 _max=255, u8 _digits=2);
+	
+		// Drawing request
+		void pleaseDraw(void);
+		
+		// Event calls
+		void penDown(u8 px, u8 py);
+		void penUp(u8 px, u8 py);
+
+		void setValue(u8 val);
+		u8 getValue(void);
+		// Callback registration
+		void registerChangeCallback(void (*onChange_)(u8));
+	private:
+		void draw(void);
+		
+		void (*onChange)(u8);
+		
+		u8 value;
+		u8 min, max, digits;
+		u8 btnstate;
+};
+
+};
 
 #endif

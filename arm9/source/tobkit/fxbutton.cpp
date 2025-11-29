@@ -37,7 +37,7 @@ FXButton::~FXButton()
 	if (small_caption) ntxm_free(small_caption);
 }
 
-void FXButton::registerPushCallback(void (*onPush_)(void)) {
+void FXButton::registerPushCallback(void (*onPush_)(u8 val)) {
 	onPush = onPush_;
 }
 		
@@ -60,7 +60,7 @@ void FXButton::penUp(u8 x, u8 y)
 	penIsDown = false;
 	draw(0);
 	if(onPush) {
-		onPush();
+		onPush(value);
 	}
 }
 
@@ -69,9 +69,8 @@ void FXButton::penMove(u8 x, u8 y) {
 }
 
 void FXButton::buttonPress(u16 button) {
-	if(onPush) {
-		onPush();
-	}
+	if(onPush)
+		onPush(value);
 }
 
 void FXButton::setCaption(const char *_caption) {
@@ -90,6 +89,11 @@ void FXButton::setCategory(u8 newcat)
 {
 	category = newcat;
 	draw(penIsDown);
+}
+
+void FXButton::setValue(u8 newval)
+{
+	value = newval;
 }
 
 /* ===================== PRIVATE ===================== */
@@ -112,14 +116,16 @@ void FXButton::draw(u8 down) {
 
 	drawBorder(theme->col_outline);
 
-	if (category == FX_CATEGORY_E)
-	{
-		const char label[3] = { 'E', caption[category], '\0' };
-		drawString(label, (width-getStringWidth(label))/2, height/2-7, theme->col_text_bt);
-	} else {
-		const char label[2] = { caption[category], '\0' };
-		drawString(label, (width-getStringWidth(label))/2, height/2-7, theme->col_text_bt);
-	}
+	// if (category == FX_CATEGORY_E)
+	// {
+	// 	const char label[3] = { 'E', caption[category], '\0' };
+	// 	drawString(label, (width-getStringWidth(label))/2, height/2-7, theme->col_text_bt);
+	// } else {
+		
+	// }
+
+	const char label[2] = { caption[category], '\0' };
+	drawString(label, (width-getStringWidth(label))/2, height/2-7, theme->col_text_bt);
 	
 	drawChar(GLYPH_3X5('X'), 3, 16, theme->col_pv_notes);
 	drawChar(GLYPH_3X5('Y'), 7, 16, theme->col_pv_effect);

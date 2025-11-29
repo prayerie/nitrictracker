@@ -19,13 +19,15 @@ limitations under the License.
 
 #include "tobkit/widget.h"
 #include "fxbutton.h"
+#include "tobkit/digitbox.h"
+#include "tobkit/label.h"
 #include "tobkit/gui.h"
 #include "tobkit/button.h"
 
 #define FXKEYBOARD_WIDTH			13 * 16 + 16 // extra space to occlude the piano
 #define FXKEYBOARD_HEIGHT			31 		+ 9
 
-#define FXKEYBOARD_LMARGIN			8
+#define FXKEYBOARD_LMARGIN			2
 #define FXKEYBOARD_YMARGIN			12
 
 #define NUM_FXKEYS					15
@@ -35,14 +37,13 @@ namespace tobkit {
 	
 class FXKeyboard: public Widget {
 	public:
-		FXKeyboard(u8 _x, u8 _y, u16 **_vram, bool _visible=true);
+		FXKeyboard(u8 _x, u8 _y, u16 **_vram, void (*onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 effparam), bool _visible=true);
 	
 		~FXKeyboard();
 
 		
 		// Drawing request
 		void pleaseDraw(void);
-		static void dummy(void) { };
 		// Event calls
 		void penDown(u8 x, u8 y);
 		void penUp(u8 x, u8 y);
@@ -57,8 +58,19 @@ class FXKeyboard: public Widget {
 		void hide(void);
 	private:
 		FXButton *fx0, *fx1, *fx2, *fx3, *fx4, *fx5, *fx6, *fx7, *fx8, *fx9, *fxa, *fxb, *fxc, *fxd, *fxf;
+		DigitBox *effectpar;
+		Label *labeleffectpar;
 		std::vector<FXButton*> fxbuttons = { fx0, fx1, fx2, fx3, fx4, fx5, fx6, fx7, fx8, fx9, fxa, fxb, fxc, fxd, fxf };
-		std::vector<const char*> fxlabels = { "00G+", "11H-", "22KD", "33LL", "44PM", "55RP", "66TR", "77XS", "88 U", "99 V", "aa ", "bb ", "cc ", "dd ", "ff ",};
+		std::vector<const char*> fxlabels = { "00G+", "11H-", "22KD", "33LL", "44PM", "55RP", "66TR", "77XS", "88 U", "99 V", "aa  ", "bb  ", "cc  ", "dd  ", "fe  ",};
+		// the fx command each key will input per category
+		// todo this probably needs changing(?)
+		std::vector<const char*> values = { "\x00\xff\xff\xff", "\x01\xff\xff\xff", "\x02\xff\xff\xff", "\x03\xff\xff\xff",
+											"\x04\xff\xff\xff", "\x05\xff\xff\xff", "\x06\xff\xff\xff", "\x07\xff\xff\xff",
+											"\x08\xff\xff\xff", "\x09\xff\xff\xff", "\x0a\xff\xff\xff", "\x0b\xff\xff\xff",
+											"\x0c\xff\xff\xff", "\x0d\xff\xff\xff", "\x0f\xff\xff\xff" };
+		
+		void (*onFxKeypress)(u8 val);
+		void (*onParamChange)(u8 val);
 		void draw(void);
 		char *caption;
 		GUI gui;

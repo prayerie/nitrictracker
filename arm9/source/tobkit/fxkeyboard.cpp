@@ -24,17 +24,27 @@ using namespace tobkit;
 
 /* ===================== PUBLIC ===================== */
 
-FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, bool _visible)
+FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 effparam), bool _visible)
 	:Widget(_x, _y, FXKEYBOARD_WIDTH, FXKEYBOARD_HEIGHT, _vram, _visible),
-	  caption(0)
+	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange)
 {
 	for (int i = 0; i < NUM_FXKEYS; ++i)
 	{
-		fxbuttons.at(i) = new FXButton(x + FXKEYBOARD_LMARGIN + (FXBUTTON_WIDTH * i), y + FXKEYBOARD_YMARGIN, _vram, true);
+		fxbuttons.at(i) = new FXButton(x + FXKEYBOARD_LMARGIN + ((FXBUTTON_WIDTH - 1) * i), y + FXKEYBOARD_YMARGIN, _vram, true);
 		fxbuttons.at(i)->setCaption(fxlabels.at(i));
 		fxbuttons.at(i)->setSmallCaption("X");
+		fxbuttons.at(i)->setSmallCaption("X");
+		fxbuttons.at(i)->registerPushCallback(onFxKeypress);
 		gui.registerWidget(fxbuttons.at(i));
 	}
+
+	labeleffectpar = new Label(186, 158, 38, 10, vram, false, true);
+	labeleffectpar->setCaption("param");
+	gui.registerWidget(labeleffectpar);
+
+	effectpar	= new DigitBox(186, 170, 35, 17, vram, 0, 0, 255, 2);
+	effectpar->registerChangeCallback(onParamChange);
+	gui.registerWidget(effectpar);
 
 	setCategory(0);
 }
@@ -47,6 +57,9 @@ FXKeyboard::~FXKeyboard()
 	{
 		delete fxbuttons.at(i);
 	}
+
+	delete labeleffectpar;
+	delete effectpar;
 }
 
 void FXKeyboard::hide(void)
@@ -86,6 +99,7 @@ void FXKeyboard::setCategory(u8 newcat) {
 		FXButton *bt = fxbuttons.at(i);
 		if (bt==0) continue;
 		bt->setCategory(newcat);
+		bt->setValue(values.at(i)[newcat]);
 
 		if (newcat == FX_CATEGORY_FT && i > 7)
 			bt->disable();
