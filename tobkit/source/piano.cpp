@@ -46,8 +46,9 @@ char_base(_char_base), map_base(_map_base), key_labels_visible(false), mapping_i
 }
 
 void Piano::setTheme(Theme *theme_, u16 bgcolor_) {
-	u16 piano_cols[8] = { theme_->col_piano_full_col1, theme_->col_piano_full_col2, theme_->col_piano_half_col1, theme_->col_piano_half_col2, 
-						theme_->col_piano_full_highlight_col1, theme_->col_piano_full_highlight_col2, theme_->col_piano_half_highlight_col1, theme_->col_piano_half_highlight_col2};
+	u16 piano_cols[9] = { theme_->col_piano_full_col1, theme_->col_piano_full_col2, theme_->col_piano_half_col1, theme_->col_piano_half_col2, 
+						theme_->col_piano_full_highlight_col1, theme_->col_piano_full_highlight_col2, theme_->col_piano_half_highlight_col1, 
+						theme_->col_piano_half_highlight_col2, theme_->col_piano_outline};
 	genPal(piano_cols, piano_Palette, piano_fullnotehighlight_Palette, piano_halfnotehighlight_Palette);
 	Widget::setTheme(theme_, bgcolor_);
 	memcpy(BG_PALETTE_SUB, piano_Palette, 32);
@@ -174,17 +175,19 @@ void Piano::setKeyLabel(u8 key, char label)
 
 void Piano::genPal(u16 *piano_cols_base, u16 *pal, u16 *pal_full_highlight, u16 *pal_half_highlight) {
 	for (int i = 0; i < 9; ++i) {
-		pal[i] = interpolateColor(piano_cols_base[3], piano_cols_base[2], (4096 / 9) * i + 1);
+		pal[i] = interpolateColor(piano_cols_base[3], piano_cols_base[2], (4096 / 8) * i + 1);
 		pal_half_highlight[i] = interpolateColor(piano_cols_base[6], piano_cols_base[7], (4096 / 9) * i + 1);
-	}
-	memcpy(&pal_full_highlight[0], &pal[0], 9 * sizeof(u16));
 
-	for (int i = 0; i < 7; ++i) {
+		if (i > 6) continue;
+
 		pal[i + 9] = interpolateColor(piano_cols_base[0], piano_cols_base[1], (4096 / 7) * i);
 		pal_full_highlight[i + 9] = interpolateColor(piano_cols_base[4], piano_cols_base[5], (4096 / 7) * i);
 	}
-	// pal_full_highlight[9] = piano_cols_base[1];
+
+	memcpy(&pal_full_highlight[0], &pal[0], 9 * sizeof(u16));
 	memcpy(&pal_half_highlight[9], &pal[9], 7 * sizeof(u16));
+
+	pal[0] = piano_cols_base[8];
 }
 
 void Piano::draw(void)
