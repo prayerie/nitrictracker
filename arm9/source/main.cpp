@@ -630,6 +630,7 @@ void handleSampleChange(const u16 newsample)
 	state->sample = newsample;
 	Instrument *inst = song->getInstrument(lbinstruments->getidx());
 	Sample *smp = inst ? inst->getSample(newsample) : NULL;
+
 	rbloop_none->set_enabled(smp != NULL);
 	rbloop_forward->set_enabled(smp != NULL);
 	rbloop_pingpong->set_enabled(smp != NULL);
@@ -2480,54 +2481,6 @@ void handleRenderSampleOK(void)
 	setRecordMode(state->recording);
 }
 
-void handleRenderSampleOK(void)
-{
-	pausePlay();
-	for (int ch = 0; ch < 16; ++ch)
-	{
-		pv->setChSolo(false, ch);
-	}
-	Sample *smp = renderbox->getSample();
-	// Kill record box
-	gui->unregisterOverlayWidget();
-
-	if (renderbox)
-		delete renderbox;
-	// 	renderbox = 0;
-	// }
-	render_ptn_mode = false;
-	// Turn off the mic
-	// CommandMicOff();
-	if (restore_stereo_output)
-		CommandSetStereoOutput(true);
-	// Add instrument if necessary
-	state->instrument = song->getInstruments();
-	
-	Instrument *inst = song->getInstrument(state->instrument);
-
-	if(inst == 0)
-	{
-		inst = new Instrument("render");
-		song->setInstrument(state->instrument, inst);
-
-		lbinstruments->set(state->instrument, inst->getName());
-	}
-	lbinstruments->select(state->instrument);
-	lbinstruments->scrollTo(state->instrument);
-	// Insert the sample into the instrument
-	inst->setSample(state->sample, smp);
-
-	volEnvSetInst(inst);
-
-	cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
-
-	handleSampleChange(state->sample);
-	setHasUnsavedChanges(true);
-	
-	redrawSubScreen();
-	setRecordMode(state->recording);
-}
-
 void handleRecordSampleOK(void)
 {
 	Sample *smp = recordbox->getSample();
@@ -2699,7 +2652,7 @@ void handleRenderSample(void)
 	}
 	u32 dur = (song->getMsPerRow() * ((u32)newnewy2 - (u32)newnewy1)) >> 16;
 
-	if (dur >= 12000)
+	if (dur >= 8000)
 	{
 		if (ptnn)
 		{
@@ -2734,7 +2687,7 @@ void handleRenderSample(void)
 	
 	
 
-	renderbox = new RenderBox(&sub_vram, handleRenderSampleOK, bufSwap, doPlaySong, startRenderSample, handleRenderSampleCancel, smp, inst, state->sample, 12000, ptnn);
+	renderbox = new RenderBox(&sub_vram, handleRenderSampleOK, bufSwap, doPlaySong, startRenderSample, handleRenderSampleCancel, smp, inst, state->sample, dur, ptnn);
 
 	gui->registerOverlayWidget(renderbox, KEY_A | KEY_B, SUB_SCREEN);
 	renderbox->reveal();
@@ -4711,7 +4664,7 @@ void move_filebrowser_to_top(void)
 int main(int argc, char **argv) {
 //---------------------------------------------------------------------------------
 #ifdef GURU
-	//defaultExceptionHandler();
+	defaultExceptionHandler();
 #endif
 
 	// Hide everything

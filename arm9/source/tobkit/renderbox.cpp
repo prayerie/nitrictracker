@@ -213,13 +213,13 @@ void RenderBox::startRecording(void)
         if(sound_data)
             ntxm_free(sound_data);
         
-        u32 n_samples = 4 * (RENDERBOX_SAMPLING_FREQ) * render_ms;
+        u32 n_samples = ((RENDERBOX_SAMPLING_FREQ) * render_ms) / 1000;
         
-        u32 *capture_buffer = (u32*)ntxm_cmalloc( 2 * n_samples * sizeof(s16));
+        u32 *capture_buffer = (u32*)ntxm_cmalloc(n_samples * sizeof(s16));
         if(!capture_buffer)
             return;
         
-        sound_data = (s16*)ntxm_cmalloc(2 * n_samples * sizeof(s16));
+        sound_data = (s16*)ntxm_cmalloc(n_samples * sizeof(s16));
         if(!sound_data)
         {
             ntxm_free(capture_buffer);
@@ -230,14 +230,13 @@ void RenderBox::startRecording(void)
 
         playSong();
         
-        soundCaptureStart(capture_buffer, (n_samples * 2), 0, false, true, false,
+        soundCaptureStart(capture_buffer, n_samples / 2, 0, false, true, false,
                           SoundCaptureFormat_16Bit);
         // 
         for (u32 i = 0; i < (ms * 60) / 1000; ++i)
         {
 			if (stop)
 			{
-				printf("HALT!");
 				stopRecording(capture_buffer, n_samples);
 				return;
 			} else {
@@ -255,11 +254,12 @@ void RenderBox::startRecording(void)
 void RenderBox::stopRecording(u32 *buf, u32 n_s)
 {	
 	soundCaptureStop(0);
+	DC_FlushAll();
 
 	s16 *wave_buf = (s16*)memUncached(buf);
 	s16 *dest = (s16*)sound_data;
 	
-	for (u32 i = 0; i < n_s; i++)
+	for (u32 i = 0; i < sizeof(s16) * n_s; i++)
 	{
 		dest[i] = wave_buf[i];
 	}
@@ -267,10 +267,10 @@ void RenderBox::stopRecording(u32 *buf, u32 n_s)
 	ntxm_free(buf);
 	
 	recording = false;
-	DC_InvalidateRange(sound_data, 2 * n_s * sizeof(s16));
+	DC_FlushAll();
 	
-	sample = new Sample((void*)sound_data, n_s, RENDERBOX_SAMPLING_FREQ, true);
-	sound_data = NULL;
+	sample = new Sample((void*)sound_data, n_s / 2, RENDERBOX_SAMPLING_FREQ, true);
+	//sound_data = NULL;
 
 	sample->setName("rendered");
 	
