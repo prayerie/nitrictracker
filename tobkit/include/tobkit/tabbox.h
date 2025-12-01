@@ -53,7 +53,8 @@ class TabBox: public Widget {
 		void hide(void);
 		void occlude(void);
 		void reveal(void);
-		
+
+		int getCount(void);
 		void setTheme(Theme *theme_, u16 bgcolor_);
 		void setIcon(u8 guiidx, const u8 *icon);
 	private:

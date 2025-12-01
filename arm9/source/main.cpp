@@ -343,9 +343,10 @@ void setHasUnsavedChanges(bool unsaved)
 
 	state->unsaved_changes = has_unsaved;
 
-	if (!tabbox) return;
+	if (!tabbox || tabbox->getCount() != 5) return;
 	tabbox->setIcon(1, has_unsaved ? icon_disk_unsaved_raw : icon_disk_raw);
 }
+
 static void handleNoteAdvanceRow(void)
 {
 	// Check if we are not at the bottom and only scroll down as far as possible
@@ -3171,6 +3172,7 @@ void setupGUI(bool dldi_enabled)
 
 	tabbox = new TabBox(1, 1, 139, 151, &sub_vram, TABBOX_ORIENTATION_TOP, 16);
 	tabbox->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
+	// Note that setHasUnsavedChanges depends on this count and order of tabs.
 	tabbox->addTab(icon_song_raw, 0);
 	if (dldi_enabled)
 		tabbox->addTab(icon_disk_raw, 1);

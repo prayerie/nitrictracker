@@ -148,6 +148,10 @@ void TabBox::reveal(void)
 	guis.at(currentgui).revealAll();
 }
 
+int TabBox::getCount(void)
+{
+	return guis.size();
+}
 
 void TabBox::setTheme(Theme *theme_, u16 bgcolor_)
 {
