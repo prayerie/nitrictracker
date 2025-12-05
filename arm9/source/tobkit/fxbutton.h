@@ -1,5 +1,5 @@
 /*====================================================================
-Copyright 2006 Tobias Weyand
+Copyright 2025 R Ferreira
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ limitations under the License.
 #ifndef FXBUTTON_H
 #define FXBUTTON_H
 
-#define GLYPH_3X5_COUNT 40
-#define GLYPH_3X5(c) c - 55
+#define GLYPH_3X5_COUNT 47
+#define GLYPH_3X5(c) (c == '0' ? 0 : ((c == ':') ? ('Z' - 55 + 5) : ((c < 58 && c > 48) ? (c - 48) : (c - 55))))
+#define GLYPH_3X5_W(c) (4)
+
 
 #define FX_CATEGORY_NORMAL 0
 #define FX_CATEGORY_E 1
@@ -27,7 +29,6 @@ limitations under the License.
 
 #include "../../arm9/fonts/font_3x5_raw.h"
 #include "tobkit/widget.h"
-
 namespace tobkit {
 
 #define FXBUTTON_WIDTH		13
@@ -40,7 +41,7 @@ class FXButton: public Widget {
 		~FXButton();
 		
 		// Callback registration
-		void registerPushCallback(void (*onPush_)(u8 val));
+		void registerPushCallback(void (*onPush_)(u8 val, bool disabled));
 		
 		// Drawing request
 		void pleaseDraw(void);
@@ -52,15 +53,17 @@ class FXButton: public Widget {
 		void buttonPress(u16 button);
 		void setCategory(u8 newcat);
 		void setValue(u8 newval);
-
+		u8 getValue(void) { return value; /* todo not in header! */ };
+		void setIsECommand(bool e_cmd) { is_e_cmd = e_cmd; }
+		bool getIsECommand(bool e_cmd) { return is_e_cmd; }
 		inline bool isPenDown(void) const { return penIsDown; }
 		void setCaption(const char *caption);
 		void setSmallCaption(const char *small_caption);
 		
 	private:
-		void (*onPush)(u8 val);
+		bool is_e_cmd;
+		void (*onPush)(u8 val, bool disabled);
 		bool penIsDown;
-		
 		void draw(u8 down);
 		char *caption;
 		char *small_caption;

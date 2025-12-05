@@ -81,6 +81,8 @@ void Piano::penDown(u8 px, u8 py)
 	}
 	
 	curr_note = note;
+
+	//draw(); // todo remove and fix the real bug!
 }
 
 void Piano::penMove(u8 px, u8 py)
@@ -189,7 +191,7 @@ void Piano::genPal(u16 *piano_cols_base, u16 *pal, u16 *pal_full_highlight, u16 
 
 void Piano::draw(void)
 {
-	if (!is_visible()) return;
+	//if (!is_visible()) return;
 	// Fill screen with empty tiles
 	for (int i = 0; i < 768; i++) map_base[i] = 28;
 	

@@ -1,5 +1,5 @@
 /*====================================================================
-Copyright 2006 Tobias Weyand
+Copyright 2025 R Ferreira
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,33 +25,42 @@ using namespace tobkit;
 /* ===================== PUBLIC ===================== */
 
 
-FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), bool _visible)
+FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pressedValue, bool disabled), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), void (*_onFxClear)(void), bool _visible)
 	:Widget(_x, _y, FXKEYBOARD_WIDTH, FXKEYBOARD_HEIGHT, _vram, _visible),
-	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange), onParamSet(_onParamSet)
+	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange), onParamSet(_onParamSet), onFxClear(_onFxClear)
 {
 	for (int i = 0; i < NUM_FXKEYS; ++i)
 	{
 		fxbuttons.at(i) = new FXButton(x + FXKEYBOARD_LMARGIN + ((FXBUTTON_WIDTH - 1) * i), y + FXKEYBOARD_YMARGIN, _vram, true);
 		fxbuttons.at(i)->setCaption(fxlabels.at(i));
-		fxbuttons.at(i)->setSmallCaption("X");
-		fxbuttons.at(i)->setSmallCaption("X");
+		fxbuttons.at(i)->setSmallCaption((i == 0 || (i <= 7 && i >= 5) || i == 0xa) ? "XY" : "XX");
 		fxbuttons.at(i)->registerPushCallback(onFxKeypress);
 		gui.registerWidget(fxbuttons.at(i));
 	}
 
-	labeleffectpar = new Label(186, 153, 38, 10, vram, false, true);
+	labeleffectpar = new Label(186, 153, 38, 10, _vram, false, true);
 	labeleffectpar->setCaption("param");
 	gui.registerWidget(labeleffectpar);
 
-	effectpar	= new DigitBox(186, 164, 35, 17, vram, 0, 0, 255, 2);
+	effectpar	= new DigitBox(186, 164, 35, 17, _vram, 0, 0, 255, 2);
 	effectpar->registerChangeCallback(onParamChange);
 	gui.registerWidget(effectpar);
 
-	buttonseteffectpar = new Button(186, 180, 35, 10, vram);
+	buttonseteffectpar = new Button(186, 180, 35, 10, _vram);
 	buttonseteffectpar->setCaption("set");
 	buttonseteffectpar->registerPushCallback(onParamSet);
 
+	buttonmfx = new Button(2, y + 1, 22, 10, _vram);
+	buttonmfx->setCaption("clr");
+	buttonmfx->registerPushCallback(onFxClear);
+
+	// buttonmpar = new Button(22, y + 2, 15, 10, vram);
+	// buttonmpar->setCaption("-p");
+	// buttonmpar->registerPushCallback(onParamSet);
+
 	gui.registerWidget(buttonseteffectpar);
+	gui.registerWidget(buttonmfx);
+	//gui.registerWidget(buttonmpar);
 
 	setCategory(0);
 }
@@ -68,6 +77,8 @@ FXKeyboard::~FXKeyboard()
 	delete labeleffectpar;
 	delete effectpar;
 	delete buttonseteffectpar;
+	delete buttonmfx;
+	//delete buttonmpar;
 }
 
 void FXKeyboard::hide(void)
@@ -105,6 +116,8 @@ u8 FXKeyboard::getParam(void)
 }
 
 void FXKeyboard::setCategory(u8 newcat) {
+	category = newcat;
+	
 	for (int i=0; i<NUM_FXKEYS; ++i)
 	{
 		FXButton *bt = fxbuttons.at(i);
@@ -112,10 +125,14 @@ void FXKeyboard::setCategory(u8 newcat) {
 		bt->setCategory(newcat);
 		bt->setValue(values.at(i)[newcat]);
 
-		if (newcat == FX_CATEGORY_FT && i > 7)
+		if (newcat == FX_CATEGORY_FT /* && i > 7 */)
+			bt->disable(); 
+		else if (newcat == FX_CATEGORY_VOL /* && i > 9 */)
 			bt->disable();
-		else if (newcat == FX_CATEGORY_VOL && i > 9)
+		else if (newcat == FX_CATEGORY_E && (i == 0 || (i > 6 && i < 0xC)))
+		{
 			bt->disable();
+		}
 		else
 			bt->enable();
 	}
@@ -123,22 +140,26 @@ void FXKeyboard::setCategory(u8 newcat) {
 	switch (newcat)
 	{
 		case FX_CATEGORY_NORMAL:
-		setCaption("9xx: test caption hi :D");
+		setCaption("EFFECT COMMANDS");
+		effectpar->setSingleDigit(false);
 		break;
 
 		case FX_CATEGORY_E:
 		//setCaption("Exy: extended commands");
-		setCaption("these buttons do nothing currently");
+		setCaption("EXY: EXTENDED COMMANDS");
+		effectpar->setSingleDigit(true);
 		break;
 
 		case FX_CATEGORY_FT:
 		//setCaption("Xxy: sdfoghdfjghlshjdf");
-		setCaption("these buttons do nothing currently");
+		setCaption("DISABLED");
+		effectpar->setSingleDigit(false);
 		break;
 
 		case FX_CATEGORY_VOL:
 		//setCaption("volume commands");
-		setCaption("these buttons do nothing currently");
+		setCaption("DISABLED");
+		effectpar->setSingleDigit(false);
 		break;
 	}
 }
@@ -165,7 +186,7 @@ void FXKeyboard::draw(void) {
 
 	drawFullBox(0, 0, width, height, theme->col_bg); // hide the piano
 
-	drawString(caption, (FXKEYBOARD_WIDTH-20)/2 - getStringWidth(caption)/2, 2, theme->col_text_light, getStringWidth(caption));
+	drawSmallString(caption, 5 + (FXKEYBOARD_WIDTH-20)/2 - (4 * strlen(caption)) / 2 - 6 /*todo: BAD!*/, 4, theme->col_text_light);
 	gui.revealAll();
 	gui.draw();
 }

@@ -1,5 +1,5 @@
 /*====================================================================
-Copyright 2006 Tobias Weyand
+Copyright 2025 R Ferreira
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,10 +37,10 @@ FXButton::~FXButton()
 	if (small_caption) ntxm_free(small_caption);
 }
 
-void FXButton::registerPushCallback(void (*onPush_)(u8 val)) {
+void FXButton::registerPushCallback(void (*onPush_)(u8 val, bool disabled)) {
 	onPush = onPush_;
 }
-		
+	
 // Drawing request
 void FXButton::pleaseDraw(void) {
 	draw(0);
@@ -56,12 +56,13 @@ void FXButton::penDown(u8 x, u8 y)
 
 void FXButton::penUp(u8 x, u8 y)
 {
+	// onPush regardless of if enabled or disabled to show the label text. the keyboard will check if enabled
+	if(onPush) {
+		onPush(enabled ? value : value | 0xf0, !is_enabled());
+	}
 	if (!enabled) return;
 	penIsDown = false;
 	draw(0);
-	if(onPush) {
-		onPush(value);
-	}
 }
 
 void FXButton::penMove(u8 x, u8 y) {
@@ -70,7 +71,7 @@ void FXButton::penMove(u8 x, u8 y) {
 
 void FXButton::buttonPress(u16 button) {
 	if(onPush)
-		onPush(value);
+		onPush(value, !is_enabled());
 }
 
 void FXButton::setCaption(const char *_caption) {
@@ -87,6 +88,7 @@ void FXButton::setSmallCaption(const char *_small_caption) {
 
 void FXButton::setCategory(u8 newcat)
 {
+	setIsECommand(newcat == FX_CATEGORY_E);
 	category = newcat;
 	draw(penIsDown);
 }
@@ -125,8 +127,8 @@ void FXButton::draw(u8 down) {
 	// }
 
 	const char label[2] = { caption[category], '\0' };
-	drawString(label, (width-getStringWidth(label))/2, height/2-7, theme->col_text_bt);
+	drawString(label, (width-getStringWidth(label))/2, height/2-7, (theme->col_piano_label | BIT(15)));
 	
-	drawChar(GLYPH_3X5('X'), 3, 16, theme->col_pv_notes);
-	drawChar(GLYPH_3X5('Y'), 7, 16, theme->col_pv_effect);
+	drawChar(GLYPH_3X5(small_caption[0]), 3, 16, theme->col_pv_notes);
+	drawChar(GLYPH_3X5(small_caption[1]), 7, 16, small_caption[1] == 'Y' ? theme->col_pv_effect : theme->col_pv_notes);
 }

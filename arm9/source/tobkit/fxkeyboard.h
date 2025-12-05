@@ -1,5 +1,5 @@
 /*====================================================================
-Copyright 2006 Tobias Weyand
+Copyright 2025 R Ferreira
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ namespace tobkit {
 	
 class FXKeyboard: public Widget {
 	public:
-		FXKeyboard(u8 _x, u8 _y, u16 **_vram, void (*onFxKeypress)(u8 pressedValue), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), bool _visible=true);
+		FXKeyboard(u8 _x, u8 _y, u16 **_vram, void (*onFxKeypress)(u8 pressedValue, bool disabled), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), void (*_onFxClear)(void), bool _visible=true);
 	
 		~FXKeyboard();
 
@@ -53,32 +53,82 @@ class FXKeyboard: public Widget {
 		
 		void setCaption(const char *caption);
 		void setCategory(u8 newcat);
+		u8 getCategory(void) { return category; } // todo Not in the header file ..
 		void setTheme(Theme *theme_, u16 bgcolor_);
 
 		u8 getParam(void);
+		u8 getLastCmd(void) { return last_cmd; }
 		// void reveal(void);
 		// void show(void);
 		void hide(void);
+		void setCaptionFor(u8 val) { 
+			last_cmd = val; // TODO HACKY
+			if (category == FX_CATEGORY_NORMAL)
+				setCaption(captions[val & 0x0F]);
+			else if (category == FX_CATEGORY_E)
+				setCaption(E_captions[val & 0x0F]); // todo hacky remove this lol
+
+		 } // todo move outside of header!
 	private:
 		FXButton *fx0, *fx1, *fx2, *fx3, *fx4, *fx5, *fx6, *fx7, *fx8, *fx9, *fxa, *fxb, *fxc, *fxd, *fxf;
 		DigitBox *effectpar;
 		Label *labeleffectpar;
-		Button *buttonseteffectpar;
+		Button *buttonseteffectpar, *buttonmfx, *buttonmpar;
 		std::vector<FXButton*> fxbuttons = { fx0, fx1, fx2, fx3, fx4, fx5, fx6, fx7, fx8, fx9, fxa, fxb, fxc, fxd, fxf };
 		std::vector<const char*> fxlabels = { "00G+", "11H-", "22KD", "33LL", "44PM", "55RP", "66TR", "77XS", "88 U", "99 V", "aa  ", "bb  ", "cc  ", "dd  ", "fe  ",};
 		// the fx command each key will input per category
 		// todo this probably needs changing(?)
-		std::vector<const char*> values = { "\x00\xff\xff\xff", "\x01\xff\xff\xff", "\x02\xff\xff\xff", "\x03\xff\xff\xff",
-											"\x04\xff\xff\xff", "\x05\xff\xff\xff", "\x06\xff\xff\xff", "\x07\xff\xff\xff",
-											"\x08\xff\xff\xff", "\x09\xff\xff\xff", "\x0a\xff\xff\xff", "\x0b\xff\xff\xff",
-											"\x0c\xff\xff\xff", "\x0d\xff\xff\xff", "\x0f\xff\xff\xff" };
-		
-		void (*onFxKeypress)(u8 val);
+		std::vector<const char*> values = { "\x00\xE0\xff\xff", "\x01\xE1\xff\xff", "\x02\xE2\xff\xff", "\x03\xE3\xff\xff",
+											"\x04\xE4\xff\xff", "\x05\xE5\xff\xff", "\x06\xE6\xff\xff", "\x07\xE7\xff\xff",
+											"\x08\xE8\xff\xff", "\x09\xE9\xff\xff", "\x0a\xEA\xff\xff", "\x0b\xEB\xff\xff",
+											"\x0c\xEC\xff\xff", "\x0d\xED\xff\xff", "\x0f\xEE\xff\xff" }; // todo MAKE LESS MESSY BEFORE PR!!
+		const char *captions[16] = { "0XY: ARPEGGIO", "1XX: PORTAMENTO UP", "2XX: PORTAMENTO DOWN",
+									 "3XX: PORTAMENTO TO NOTE", "4XY: VIBRATO", "5XY: PORTAMENTO TO NOTE \x60 VOLUME SLIDE",
+									 "6XY: VIBRATO WITH VOLUME SLIDE", "7XY: TREMOLO", "8XY: SET NOTE PANNING POSITION", 
+									 "9XX: SAMPLE OFFSET", "AXY: VOLUME SLIDE", "BXX: JUMP TO ORDER", "CXX: SET NOTE VOLUME", "DXX: PATTERN BREAK", "UNUSED", "FXX: SET SONG SPEED \x60 BPM"}; // 0x60 because GLYPH_3X5 subtracts 55 for ascii. this is shit and fix it before pr lol
+		const char *E_captions[15] = {"E0X: AMIGA LED FILTER TOGGLE", "E1X: FINE PORTAMENTO UP", 
+									  "E2X: FINE PORTAMENTO DOWN", "E3X: GLISSANDO CONTROL",
+									  "E4X: VIBRATO CONTROL", "E5X: SET NOTE FINETUNE", 
+									  "E6X: PATTERN LOOP", "E7X: TREMOLO CONTROL", 
+									  "E8X: SET NOTE PANNING POSITION", "E9X: RETRIGGER NOTE",
+									  "EAX: FINE VOLUME SLIDE UP", "EBX: FINE VOLUME SLIDE DOWN",
+									  "ECX: NOTE CUT", "EDX: NOTE DELAY", "EEX: PATTERN DELAY", /*"EFX: FUNK IT"*/ };
+		void (*onFxKeypress)(u8 val, bool disabled);
 		void (*onParamChange)(u8 val);
 		void (*onParamSet)(void);
+		void (*onFxClear)(void);
 		void draw(void);
 		char *caption;
 		GUI gui;
+
+		inline void drawChar(u8 c, u8 cx, u8 cy, u16 col)
+		{
+			u8 i,j;
+			for(j=0;j<5;++j) {
+				for(i=0;i<3;++i) {
+					u16 pixelidx = 3*GLYPH_3X5_COUNT*j+3*c+i;
+					if(font_3x5_raw[pixelidx/8]&BIT(pixelidx%8)) {
+						//*(*vram+SCREEN_WIDTH*(2+cy*8+j)+1+cx*4+i) = col;
+						*(*vram+SCREEN_WIDTH*(y+cy+j)+x+cx+i) = col;
+					}
+				}
+			}
+		}
+
+		inline void drawSmallString(const char *message, u8 sx, u8 sy, u16 col)
+		{
+			size_t n_chars = strlen(message);
+			for (int c = 0; c < n_chars; ++c)
+			{
+				char _c = message[c];
+				if (_c == ' ') continue;
+
+				drawChar(GLYPH_3X5(_c), sx + c * (GLYPH_3X5_W(_c)), sy, col);
+			}
+		}
+
+		u8 category = 0;
+		u8 last_cmd = 0;
 };
 
 };

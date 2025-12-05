@@ -25,31 +25,69 @@ using namespace tobkit;
 
 DigitBox::DigitBox(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, u8 _value, u8 _min, u8 _max, u8 _digits)
 	:Widget(_x, _y, _width, _height, _vram),
-	value(_value), min(_min), max(_max), digits(_digits), btnstate(0)
+	value(_value), min(_min), max(_max), digits(_digits), btnstate(0), lasty(0), lastx(0)
 {
 	onChange = 0;
 }	
+
+void DigitBox::penMove(u8 px, u8 py)
+{
+	if (!enabled) return;
+
+	if (lasty == 0)
+	{
+		lasty=py;
+		return;
+	}
+
+	s16 dy = lasty-py;
+	if(abs(dy)>1 && px > x + 8 &&  px < x + width - 8) {
+		int inc = (dy*dy) >> 3;
+		if (dy == 0)
+			inc = 1;
+		if(dy < 0)
+			inc = -inc;
+
+		s16 newval = value+inc;
+			
+		if(newval > max) {
+			value=max;
+		} else if(newval<min) {
+			value=min;
+		} else {
+			value=newval;
+		}
+		
+		draw();
+		
+		if(onChange!=0) {
+			onChange(value);
+		}
+		
+		lasty = py;
+	}
+}
 
 // Drawing request
 void DigitBox::pleaseDraw(void) {
 	draw();
 }
 
-// Event calls
+// Event calls1
 void DigitBox::penDown(u8 px, u8 py) {
 	
 	u8 oldvalue = value;
 	
-	if((px>x)&&(px<x+width/2)&&(py>y)&&(py<y+9)) {
+	if((px>x)&&(px<x+width/4)&&(py>y)&&(py<y+9)&&digits==2) {
 		btnstate = 1;
 		if(value<max) value+=0x10;
-	} else if((px>x)&&(px<x+width/2)&&(py>y+9)&&(py<y+18)) {
+	} else if((px>x)&&(px<x+width/4)&&(py>y+9)&&(py<y+18)&&digits==2) {
 		btnstate = 2;
 		if(value>min) value-=0x10;
-	} else if((px>x)&&(px>x+width/2)&&(py>y)&&(py<y+9)) {
+	} else if((px>x)&&(px>x+(width/4)*3)&&(py>y)&&(py<y+9)) {
 		btnstate = 3;
 		if(value<max) value++;
-	} else if((px>x)&&(px>x+width/2)&&(py>y+9)&&(py<y+18)) {
+	} else if((px>x)&&(px>x+(width/4)*3)&&(py>y+9)&&(py<y+18)) {
 		btnstate = 4;
 		if(value>min) value--;
 	}
@@ -61,7 +99,7 @@ void DigitBox::penDown(u8 px, u8 py) {
 }
 
 void DigitBox::penUp(u8 px, u8 py) {
-	
+	lasty=0;
 	btnstate = 0;
 	draw();
 }
@@ -91,6 +129,13 @@ u8 DigitBox::getValue(void)
 	return value;
 }
 
+void DigitBox::setSingleDigit(bool single_digit_mode)
+{
+	digits = single_digit_mode ? 1 : 2;
+	if (theme)
+		pleaseDraw();
+}
+
 // Callback registration
 void DigitBox::registerChangeCallback(void (*onChange_)(u8)) {
 	onChange = onChange_;
@@ -103,23 +148,36 @@ void DigitBox::draw(void)
 	// Number display
 	drawFullBox(9, 1, width-9, height-1, theme->col_lighter_bg);
 	
+	u8 extra_offs = 0;
 	char numberstr[5];
-	char formatstr[] = "%02x";
+
+	char formatstr2[] = "%02x";
+	char formatstr1[] = "%1x";
+	if (digits != 2)
+	{
+		extra_offs = 3;
+	}
+
 	// Set no of digits (hacky, but there's no other way)
 	// formatstr[1] = digits+48;
 	
-	snprintf(numberstr, sizeof(numberstr), formatstr, value);
-	drawString(numberstr, 11, 5, theme->col_text_value);
+	snprintf(numberstr, sizeof(numberstr), digits == 2 ? formatstr2 : formatstr1, (digits == 2) ? value : (value & 0x0f));
+	drawString(numberstr, 11 + extra_offs, 5, theme->col_text_value);
 
 	// Probably quite dumb but avoids code duplication lol
 	for (int k = 0; k < 2; ++k)
 	{
+		bool disable_left = (k == 0 && digits == 1);
+		bool disable_r_up = 0 && (k == 1 && digits == 1 && (value & 0x0f) == 0x0f);
+
+		printf("%d\n",disable_left);
 		u8 offset = k * (width - 9);
 		// Upper Button
+		//todo:refactor ; just use if(enabled)
 		if(btnstate==1 + 2 * k) {
-			drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 1+offset, 1, 8, 8);
+			drawGradient(disable_left ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, disable_left ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, 1+offset, 1, 8, 8);
 		} else {
-			drawGradient(theme->col_light_ctrl, theme->col_dark_ctrl, 1+offset, 1, 8, 8);
+			drawGradient(disable_left ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, disable_left ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, 1+offset, 1, 8, 8);
 		}
 		
 		// This draws the up-arrow
@@ -134,9 +192,9 @@ void DigitBox::draw(void)
 		
 		// Lower Button
 		if(btnstate==2 + 2 * k) {
-			drawGradient(theme->col_dark_ctrl, theme->col_light_ctrl, 1+offset, 8, 8, 8);
+			drawGradient((disable_left || disable_r_up) ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, (disable_left || disable_r_up) ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, 1+offset, 8, 8, 8);
 		} else {
-			drawGradient(theme->col_light_ctrl, theme->col_dark_ctrl, 1+offset, 8, 8, 8);
+			drawGradient((disable_left || disable_r_up) ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, (disable_left || disable_r_up) ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, 1+offset, 8, 8, 8);
 		}
 		
 		// This draws the down-arrow

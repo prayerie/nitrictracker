@@ -32,9 +32,10 @@ class DigitBox: public Widget {
 		// Event calls
 		void penDown(u8 px, u8 py);
 		void penUp(u8 px, u8 py);
-
+		void penMove(u8 px, u8 py);
 		void setValue(u8 val);
 		u8 getValue(void);
+		void setSingleDigit(bool single_digit_mode);
 		// Callback registration
 		void registerChangeCallback(void (*onChange_)(u8));
 	private:
@@ -43,6 +44,7 @@ class DigitBox: public Widget {
 		void (*onChange)(u8);
 		
 		u8 value;
+		u8 lasty, lastx;
 		u8 min, max, digits;
 		u8 btnstate;
 };

@@ -75,7 +75,8 @@ namespace tobkit {
 #define SHARP	38
 #define SPACE	39
 
-#define GLYPH_3X5_COUNT 40
+#define GLYPH_3X5_COUNT 47
+#define GLYPH_3X5(c) (c == '0' ? 0 : ((c == ':') ? ('Z' - 55 + 5) : ((c < 58 && c > 48) ? (c - 48) : (c - 55))))
 
 const u8 notes_chars[] =   {12, 12, 13, 13, 14, 15, 15, 16, 16, 10, 10, 17};
 const u8 notes_signs[] =   {0 , 1 , 0 , 1 , 0 , 0 , 1 , 0 , 1 , 0 , 1 ,  0};
@@ -249,9 +250,53 @@ class PatternView: public Widget {
 			if(cell->instrument != NO_INSTRUMENT)
 				drawHexByte(cell->instrument+1, realx+3*PV_CHAR_WIDTH+1, realy, instrcol); // Adding one because FT2 indices start with 1
 			
-			// Volume
-			if(cell->volume != NO_VOLUME)
-				drawHexByte(cell->volume, realx+5*PV_CHAR_WIDTH+2, realy, volumecol);
+			if (cell->volume != NO_VOLUME)
+			{
+				drawHexByte(cell->volume, realx + 5 * PV_CHAR_WIDTH + 2, realy, volumecol);
+			}
+			else {
+				if (cell->effect2 != 0xff && cell->volume == NO_VOLUME)
+				{
+					char eff;
+					u8 vol = cell->volume_raw;
+
+					if ((vol >= 0x60) && (vol <= 0x6F)) { // Volume slide down
+						eff = 'Z' + 2;
+					}
+					else if ((vol >= 0x70) && (vol <= 0x7F)) { // Volume slide up
+						eff = 'Z' + 6;
+					}
+					else if ((vol >= 0x80) && (vol <= 0x8F)) { // Fine volume slide down
+						eff = 'Z' + 8;
+					}
+					else if ((vol >= 0x90) && (vol <= 0x9F)) { // Fine volume slide up
+						eff = 'Z' + 7;
+					}
+					else if ((vol >= 0xA0) && (vol <= 0xAF)) { // Set vibrato speed (calls vibrato)
+						eff = 'S';
+					}
+					else if ((vol >= 0xB0) && (vol <= 0xBF)) { // Vibrato
+						eff = 'V';
+					}
+					else if ((vol >= 0xC0) && (vol <= 0xCF)) { // Set panning
+						eff = 'P';
+					}
+					else if ((vol >= 0xD0) && (vol <= 0xDF)) { // Panning slide left
+						eff = 'Z' + 9;
+					}
+					else if ((vol <= 0x1f)) { // Panning slide right
+						eff = 'Z' + 10;
+					}
+					else if (vol >= 0xF0) { // Tone porta
+						eff = 'M';
+					}
+					else {
+						eff = 'Z';
+					}
+					drawChar(GLYPH_3X5(eff), realx + 5 * PV_CHAR_WIDTH + 2, realy, effectcol);
+					drawChar(cell->effect2_param & 0x0F, realx + 6 * PV_CHAR_WIDTH + 2, realy, effectparamcol);
+				}
+			}
 			
 			if(effects_visible) {
 				// Effect and effect parameter

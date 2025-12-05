@@ -277,6 +277,8 @@ void showMessage(const char *msg, bool error);
 void deleteMessageBox(void);
 void stopPlay(void);
 void setHasUnsavedChanges(bool unsaved);
+void handleClearFx(void);
+
 
 
 #ifdef DEBUG
@@ -825,6 +827,11 @@ void setSong(Song *newsong)
 	mod_loading = false;
 	setHasUnsavedChanges(false);
 	drawMainScreen();
+}
+
+bool areScreensSwapped(void)
+{
+	return REG_POWERCNT == 0x203;
 }
 
 bool loadSample(const char *filename_with_path)
@@ -1957,16 +1964,19 @@ void setEffectCommand(u16 eff)
 			for (u16 row = sel_y1; row <= sel_y2; row++)
 			{
 				Cell cell = song->getPattern(song->getPotEntry(state->potpos))[chn][row];
+				
 				cell.effect = eff;
 				*fill->ptr(chn - sel_x1, row - sel_y1) = cell;
+
 			}
         action_buffer->add(song, new MultipleCellSetAction(state, sel_x1, sel_y1, fill, false));
 		redraw_main_requested = true;
 	}
 }
 
-void setEffectParamIfEmpty(u16 eff_par)
+void setEffectParamIfEmpty(u16 eff_par, bool ignore_e=true)
 {
+	
 	u16 sel_x1, sel_y1, sel_x2, sel_y2;
 	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
     CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
@@ -1978,8 +1988,12 @@ void setEffectParamIfEmpty(u16 eff_par)
 			for (u16 row = sel_y1; row <= sel_y2; row++)
 			{
 				Cell cell = song->getPattern(song->getPotEntry(state->potpos))[chn][row];
-				if (cell.effect_param == 0x00 || cell.effect_param == 0xff)
+				if ((cell.note == EMPTY_NOTE && cell.effect_param == 0x0) || (cell.note != EMPTY_NOTE && (cell.effect_param == 0xff || (fxkb->getCategory() == FX_CATEGORY_E && (cell.effect_param & 0xF0 == 0))))) // empty fx params are written differently depending on if there's a note
 				{
+					if ((fxkb->getCategory() == FX_CATEGORY_E) && !ignore_e)
+					{
+						eff_par = ((cell.effect_param & 0xf0)) | ((cell.effect_param & 0x0f) != 0 ?: (fxkb->getParam() & 0x0f));
+					}
 					cell.effect_param = eff_par;
 					*fill->ptr(chn - sel_x1, row - sel_y1) = cell;
 					changed = true;
@@ -1992,8 +2006,9 @@ void setEffectParamIfEmpty(u16 eff_par)
 	}
 }
 
-void setEffectParam(u16 eff_par)
+void setEffectParam(u16 eff_par, bool ignore_e=true)
 {
+	
 	u16 sel_x1, sel_y1, sel_x2, sel_y2;
 	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
     CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
@@ -2003,6 +2018,20 @@ void setEffectParam(u16 eff_par)
 			for (u16 row = sel_y1; row <= sel_y2; row++)
 			{
 				Cell cell = song->getPattern(song->getPotEntry(state->potpos))[chn][row];
+				if ((fxkb->getCategory() == FX_CATEGORY_E))
+				{
+					if (!ignore_e)
+					{
+						if (cell.effect_param != 0xff && cell.effect_param != 0x0)
+						{
+							eff_par = (cell.effect_param & 0xf0) | (fxkb->getParam() & 0x0f);
+
+						}
+						else
+							eff_par = /* ((fxkb->getLastCmd() & 0x0f) << 4) | */ (fxkb->getParam() & 0x0f);
+					}
+					
+				}
 				cell.effect_param = eff_par;
 				*fill->ptr(chn - sel_x1, row - sel_y1) = cell;
 			}
@@ -2138,26 +2167,39 @@ void handleToggleEffectsVisibility(bool on)
 {
 	nseffectcmd->hide();
 	pv->toggleEffectsVisibility(on);
+
 	if (on)
 	{
 		kb->hide();
+		kb->disable();
 		numberboxfxcat->show();
 		labelfxcat->show();
 		numberboxoctave->hide();
 		labeloct->hide();
 		fxkb->show();
+		fxkb->enable();
 	}
 	else
 	{
+		if (!areScreensSwapped())
+			pv->clearSelection();
 		kb->show();
 		fxkb->hide();
 		numberboxfxcat->hide();
 		labelfxcat->hide();
 		numberboxoctave->show();
 		labeloct->show();
+		kb->enable();
+		fxkb->disable();
 	}
 
-	redrawSubScreen();
+	labeloct->pleaseDraw();
+	labelfxcat->pleaseDraw();
+	buttonundo->pleaseDraw();
+	numberboxoctave->pleaseDraw();
+	numberboxfxcat->pleaseDraw();
+
+	setRecordMode(on); // ensure red border gets drawn!
 }
 
 // number slider
@@ -2166,12 +2208,22 @@ void handleEffectCommandChanged(s32 eff)
 	setEffectCommand(eff);
 }
 
-void fxVal(u8 val)
+void fxVal(u8 val, bool disabled)
 {
-	if (val == 0xff) return; // no command
+	fxkb->setCaptionFor(val); // "press" an empty command so we can at least show the new label
+	if (disabled) return; // no command
 
-	setEffectCommand(val);
-	setEffectParamIfEmpty(fxkb->getParam());
+	if (!state->recording) return;
+
+	if (fxkb->getCategory() == FX_CATEGORY_E)
+	{
+		setEffectCommand(0xE);
+		setEffectParam(((val & 0x0f) << 4) | (fxkb->getParam() & 0x0f), true);
+	} else 
+	{
+		setEffectCommand(val);
+		setEffectParamIfEmpty(fxkb->getParam(), false);
+	}
 	
 	handleNoteAdvanceRow();
 }
@@ -2185,14 +2237,20 @@ void handleSetEffectCommand(void)
 
 void handleEffectParamChanged(u8 eff_par)
 {
-	setEffectParam(eff_par);
+	setEffectParam(eff_par, false);
 }
 
 // button
 void handleSetEffectParam(void)
 {
-	setEffectParam(fxkb->getParam());
+	setEffectParam(fxkb->getParam(), false);
 	handleNoteAdvanceRow();
+}
+
+void handleClearFx(void)
+{
+	setEffectParam(0, true);
+	setEffectCommand(0xff);
 }
 
 void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
@@ -2520,10 +2578,12 @@ void switchScreens(void)
 {
 	lcdSwap();
 	gui->switchScreens();
-	pv->clearSelection();
+	if (!fxkb->is_visible())
+		pv->clearSelection();
 	redraw_main_requested = false;
 	drawMainScreen();
 }
+
 
 
 // Create the song and do other init stuff yet to be determined.
@@ -3129,9 +3189,9 @@ void setupGUI(bool dldi_enabled)
 	//kb->disable();
 	// kb->hide();
 
-	fxkb = new FXKeyboard(0, 152, &sub_vram, fxVal, handleEffectParamChanged, handleSetEffectParam, true);
+	fxkb = new FXKeyboard(0, 152, &sub_vram, fxVal, handleEffectParamChanged, handleSetEffectParam, handleClearFx, true);
 	gui->registerWidget(fxkb, 0, SUB_SCREEN);
-	gui->registerWidget(kb, 0, MAIN_SCREEN);
+	gui->registerWidget(kb, 0, SUB_SCREEN);
 
 	pixmaplogo = new GradientIcon(98, 1, 80, 17,
 		(const u32*) nitrotracker_logo_raw, &sub_vram);
