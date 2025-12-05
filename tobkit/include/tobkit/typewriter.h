@@ -48,17 +48,21 @@ class Typewriter: public Widget {
 		// Callback registration
 		void registerOkCallback(void (*onOk_)(void));
 		void registerCancelCallback(void (*onCancel_)(void));
+		void registerClearCallback(void (*onClear_)(void));
 	
 		void setText(const char *text);
 		char *getText(void);
-	
 		void show(void);
 		void reveal(void);
 		void setTheme(Theme *theme_, u16 bgcolor_);
 		
 	private:
+		unsigned short typewriterPal[16] __attribute__((aligned(4))) __attribute__((visibility("hidden")));
+
+
 		void (*onOk)(void);
 		void (*onCancel)(void);
+		void (*onClear)(void);
 	
 		u16 *char_base, *map_base;
 		u8 palette_offset;
@@ -69,7 +73,7 @@ class Typewriter: public Widget {
 	
 		Label *label, *msglabel;
 		GUI gui;
-		Button *buttonok, *buttoncancel;
+		Button *buttonok, *buttoncancel, *buttonclear;
 	
 		u8 mode;
 		vuint16 *trans_reg_x, *trans_reg_y;
@@ -79,6 +83,7 @@ class Typewriter: public Widget {
 	
 		u8 tilex, tiley;
 		
+		void genPal(void);
 		void draw(void);
 		void redraw(void);
 		void drawCursor(void);

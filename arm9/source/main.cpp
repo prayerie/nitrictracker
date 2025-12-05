@@ -342,9 +342,10 @@ void setHasUnsavedChanges(bool unsaved)
 
 	state->unsaved_changes = has_unsaved;
 
-	if (!tabbox) return;
+	if (!tabbox || tabbox->getCount() != 5) return;
 	tabbox->setIcon(1, has_unsaved ? icon_disk_unsaved_raw : icon_disk_raw);
 }
+
 static void handleNoteAdvanceRow(void)
 {
 	// Check if we are not at the bottom and only scroll down as far as possible
@@ -747,7 +748,8 @@ void updateTempoAndBpm(void)
 void setSong(Song *newsong)
 {
 	song = newsong;
-	char *str = (char*) ntxm_ccalloc(1, 256);
+	char str[256];
+	str[255] = 0;
 
 	CommandSetSong(song);
 
@@ -764,36 +766,31 @@ void setSong(Song *newsong)
 	// Update POT
 	lbpot->clear();
 	u8 potentry;
-	for(u8 i=0;i<song->getPotLength();++i) {
+	for(int i=0;i<song->getPotLength();++i) {
 		potentry = song->getPotEntry(i);
-		snprintf(str, 255, "%2x", potentry);
+		snprintf(str, sizeof(str)-1, "%2x", potentry);
 		lbpot->add(str);
 	}
 
 	// Update instrument list
 	Instrument *inst;
-	for(u8 i=0;i<MAX_INSTRUMENTS;++i)
+	for(int i=MAX_INSTRUMENTS-1;i>=0;i--)
 	{
 		inst = song->getInstrument(i);
 		if(inst!=NULL) {
-			strncpy(str, inst->getName(), 255);
+			strncpy(str, inst->getName(), sizeof(str)-1);
 			lbinstruments->set(i, str);
 		} else {
 			lbinstruments->set(i, "");
 		}
 	}
-
+	
+	// inst is now equal to song->getInstrument(0)
 	lbinstruments->select(0);
+	updateSampleList(inst);
+	handleSampleChange(0);
+	volEnvSetInst(inst);
 
-	updateSampleList(song->getInstrument(0));
-
-	inst = song->getInstrument(0);
-	if(inst != 0)
-		handleSampleChange(0);
-
-	volEnvSetInst(song->getInstrument(0));
-
-	inst = song->getInstrument(0);
 	if(inst != 0)
 	{
 		cbvolenvenabled->setChecked(inst->getVolEnvEnabled());
@@ -819,11 +816,9 @@ void setSong(Song *newsong)
 		sampledisplay->setSample(inst->getSample(state->sample));
 	}
 
-
-	strncpy(str, song->getName(), 255);
+	strncpy(str, song->getName(), sizeof(str)-1);
 	labelsongname->setCaption(str);
 
-	ntxm_free(str);
 	mod_loading = false;
 	setHasUnsavedChanges(false);
 	drawMainScreen();
@@ -1161,6 +1156,11 @@ void deleteTypewriter(void)
 	typewriter_active = false;
 	delete tw;
 	redrawSubScreen();
+}
+
+void clearTypewriterText(void)
+{
+	tw->setText("");
 }
 
 
@@ -1503,6 +1503,7 @@ void handleDSMWRecv(void)
 
 #endif
 
+
 // Callback called from lbpot when the user changes the pot element
 void handlePotPosChangeFromUser(u16 newpotpos)
 {
@@ -1726,6 +1727,14 @@ void handleRestartPosChange(s32 restartpos)
 	DC_FlushAll();
 }
 
+void confirmZap(void (*onConfirm)(void))
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "are you sure", 2, "yes", onConfirm, "cancel", deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
+}
+
 void zapPatterns(void)
 {
 	song->zapPatterns();
@@ -1749,6 +1758,47 @@ void zapPatterns(void)
 	redraw_main_requested = false;
 	drawMainScreen();
 
+	CommandSetSong(song);
+	updateMemoryState(true);
+}
+
+void zapUnusedInstruments(void) {
+	bool used_insts[MAX_INSTRUMENTS] = { false };
+
+	song->zapUnusedInstruments(used_insts);
+
+	for (int i = 0; i < MAX_INSTRUMENTS; i++) {
+		if (used_insts[i]) continue;
+
+		lbinstruments->set(i, "");
+		if (lbinstruments->getidx() == i) {
+			sampledisplay->setSample(NULL);
+			handleSampleChange(0);
+			for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+				lbsamples->set(i, "");
+			}
+		}
+	}
+		
+	DC_FlushAll();
+	deleteMessageBox();
+	CommandSetSong(song);
+	updateMemoryState(true);
+}
+
+void zapCurrentInstrument(void) {
+	PrintFreeMem();
+	u8 inst = lbinstruments->getidx();
+	song->zapInstrument(inst);
+	sampledisplay->setSample(NULL);
+	handleSampleChange(0);
+	DC_FlushAll();
+	deleteMessageBox();
+	
+	lbinstruments->set(inst, "");
+	for(u8 i=0;i<MAX_INSTRUMENT_SAMPLES;++i) {
+		lbsamples->set(i, "");
+	}
 	CommandSetSong(song);
 	updateMemoryState(true);
 }
@@ -1777,6 +1827,7 @@ void zapInstruments(void)
 	setHasUnsavedChanges(true);
 }
 
+
 void zapSong(void) {
 	deleteMessageBox();
 	delete song;
@@ -1784,12 +1835,37 @@ void zapSong(void) {
 	updateMemoryState(true);
 }
 
+void confirmZapSong(void)
+{
+	confirmZap(zapSong);
+}
+
+void confirmZapInsts(void)
+{
+	confirmZap(zapInstruments);
+}
+
+void confirmZapPatterns(void)
+{
+	confirmZap(zapPatterns);
+}
+
+void zapInstrumentsChoice(void)
+{
+	deleteMessageBox();
+	mb = new MessageBox(&sub_vram, "which instruments", 4, "selected", zapCurrentInstrument, "unused", zapUnusedInstruments,
+		"  all  ", confirmZapInsts, "cancel",
+		deleteMessageBox);
+	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
+	mb->reveal();
+}
+
 void handleZap(void)
 {
 	stopPlay(); // Safety first
 
-	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", zapPatterns,
-		"instruments", zapInstruments, "song", zapSong, "cancel",
+	mb = new MessageBox(&sub_vram, "what to zap", 4, "patterns", confirmZapPatterns,
+		"instruments", zapInstrumentsChoice, "song", confirmZapSong, "cancel",
 		deleteMessageBox);
 	gui->registerOverlayWidget(mb, 0, SUB_SCREEN);
 	mb->reveal();
@@ -2252,8 +2328,7 @@ void handleClearFx(void)
 	setEffectParam(0, true);
 	setEffectCommand(0xff);
 }
-
-void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*cancelCallback)(void))
+void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void), void (*clearCallback)(void), void (*cancelCallback)(void))
 {
     // TODO: Migrate to new TobKit to eliminate such ugliness
 #define SUB_BG1_X0 (*(vuint16*)0x04001014)
@@ -2261,7 +2336,7 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 
 	tw = new Typewriter(prompt, (uint16*)CHAR_BASE_BLOCK_SUB(1),
 		(uint16*)SCREEN_BASE_BLOCK_SUB(12), 3, &sub_vram, &SUB_BG1_X0, &SUB_BG1_Y0);
-
+	tw->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
 	tw->setText(str);
 	gui->registerOverlayWidget(tw, mykey_LEFT|mykey_RIGHT, SUB_SCREEN);
 	if(okCallback!=0) {
@@ -2270,13 +2345,16 @@ void showTypewriter(const char *prompt, const char *str, void (*okCallback)(void
 	if(cancelCallback != 0) {
 		tw->registerCancelCallback(cancelCallback);
 	}
+	if(clearCallback != 0) {
+		tw->registerClearCallback(clearCallback);
+	}
 	typewriter_active = true;
 	tw->reveal();
 }
 
 
 void showTypewriterForFilename(void) {
-	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, deleteTypewriter);
+	showTypewriter("filename", labelFilename->getCaption(), handleTypewriterFilenameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterNewFolderOk(void)
@@ -2292,7 +2370,7 @@ void handleTypewriterNewFolderOk(void)
 }
 
 void showTypewriterForNewFolder(void) {
-	showTypewriter("dir name", "", handleTypewriterNewFolderOk, deleteTypewriter);
+	showTypewriter("dir name", "", handleTypewriterNewFolderOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterInstnameOk(void)
@@ -2311,7 +2389,7 @@ void showTypewriterForInstRename(void)
 		return;
 	}
 
-	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, deleteTypewriter);
+	showTypewriter("inst name", lbinstruments->get(lbinstruments->getidx()), handleTypewriterInstnameOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleTypewriterSongnameOk(void)
@@ -2324,7 +2402,7 @@ void handleTypewriterSongnameOk(void)
 void showTypewriterForSongRename(void)
 {
 	if(!state->playing || state->pause) {
-		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, deleteTypewriter);
+		showTypewriter("song name", song->getName(), handleTypewriterSongnameOk, clearTypewriterText, deleteTypewriter);
 	}
 }
 
@@ -2369,7 +2447,7 @@ void showTypewriterForSampleRename(void)
 	if(sample == 0)
 		return;
 
-	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, deleteTypewriter);
+	showTypewriter("sample name", lbsamples->get(lbsamples->getidx()), handleTypewriterSampleOk, clearTypewriterText, deleteTypewriter);
 }
 
 void handleRecordSampleOK(void)
@@ -2404,6 +2482,7 @@ void handleRecordSampleOK(void)
 	handleSampleChange(state->sample);
 	setHasUnsavedChanges(true);
 	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 void handleRecordSampleCancel(void)
@@ -2416,6 +2495,7 @@ void handleRecordSampleCancel(void)
 	CommandMicOff();
 
 	redrawSubScreen();
+	setRecordMode(state->recording);
 }
 
 // OMG FUCKING BEST FEATURE111
@@ -2450,7 +2530,6 @@ void handleRecordSample(void)
 
 }
 
-
 void handleNormalizeOK(void)
 {
 	u16 percent = normalizeBox->getValue();
@@ -2472,6 +2551,27 @@ void handleNormalizeOK(void)
 	redrawSubScreen();
 }
 
+void handleNormalizeAuto(void)
+{
+	Sample *sample = song->getInstrument(state->instrument)->getSample(state->sample);
+	u32 startsample, endsample;
+	bool sel_exists = sampledisplay->getSelection(&startsample, &endsample);
+	if(!sel_exists)
+	{
+		startsample = 0;
+		endsample = sample->getNSamples() - 1;
+	}
+
+	u32 max_amplitude = sample->getMaxAmplitude(startsample, endsample);
+	u16 factor = ((sample->getDynamicRange() / 2) << 16) / ((max_amplitude << 16) / 100);
+	factor = ntxm_clamp(factor, 100, 2000);
+	sample->normalize(factor, startsample, endsample);
+	setHasUnsavedChanges(true);
+	gui->unregisterOverlayWidget();
+	delete normalizeBox;
+	redrawSubScreen();
+}
+
 void handleNormalizeCancel(void)
 {
 	gui->unregisterOverlayWidget();
@@ -2486,7 +2586,7 @@ void sample_show_normalize_window(void)
 	Sample *smp = inst->getSample(state->sample);
 	if(!smp) return;
 
-	normalizeBox = new NormalizeBox(&sub_vram, handleNormalizeOK, handleNormalizeCancel);
+	normalizeBox = new NormalizeBox(&sub_vram, handleNormalizeOK, handleNormalizeAuto, handleNormalizeCancel);
 	gui->registerOverlayWidget(normalizeBox, 0, SUB_SCREEN);
 	normalizeBox->reveal();
 }
@@ -2670,14 +2770,13 @@ void handleCopy(void)
 void handlePaste(void)
 {
 	if(clipboard != NULL) {
-		int ptn_n_rows = song->getPatternLength(state->potpos);
+		int ptn_n_rows = song->getPatternLength(song->getPotEntry(state->potpos));
 		int n_channels = song->getChannels();
 		u8 rows_over = std::max((s16)(clipboard->height() + state->getCursorRow()) - ptn_n_rows, 0);
 		u8 cols_over = std::max((s16)(clipboard->width() + state->channel) - n_channels, 0);
 
 		if (rows_over > 0 || cols_over > 0) {
 			ntxm_dprintf("paste is oversized by %u rows and %u cols, trimming\n", rows_over, cols_over);
-
 			u8 new_height = clipboard->height() - rows_over;
 			u8 new_width = clipboard->width() - cols_over;
 			CellArray *new_i = new CellArray(new_width, new_height);
@@ -3199,6 +3298,7 @@ void setupGUI(bool dldi_enabled)
 
 	tabbox = new TabBox(1, 1, 139, 151, &sub_vram, TABBOX_ORIENTATION_TOP, 16);
 	tabbox->setTheme(settings->getTheme(), settings->getTheme()->col_bg);
+	// Note that setHasUnsavedChanges depends on this count and order of tabs.
 	tabbox->addTab(icon_song_raw, 0);
 	if (dldi_enabled)
 		tabbox->addTab(icon_disk_raw, 1);

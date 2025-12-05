@@ -113,6 +113,13 @@ ColorScheme::ColorScheme() {
 	col_piano_full_highlight_col2 = RGB15(20, 20, 26) | BIT(15);
 	col_piano_half_highlight_col1 = RGB15(20, 8, 8) | BIT(15);
 	col_piano_half_highlight_col2 = RGB15(13, 0, 0) | BIT(15);
+	col_piano_outline = RGB15(0, 0, 0) | BIT(15);
+	col_typewriter_bg = RGB15(31, 31, 31) | BIT(15);
+	col_typewriter_key = RGB15(22, 22, 28) | BIT(15);
+	col_typewriter_key_label = RGB15(0, 0, 0) | BIT(15);
+	col_typewriter_mod_key = RGB15(17, 17, 26) | BIT(15);
+	col_typewriter_pressed_key = col_typewriter_bg;
+	col_typewriter_mod_key_label = col_typewriter_key_label;
 }
 
 Theme::Theme(char* themepath, bool use_fat)
