@@ -142,12 +142,12 @@ u16 mykey_LEFT = KEY_LEFT, mykey_UP = KEY_UP, mykey_RIGHT = KEY_RIGHT, mykey_DOW
 GUI *gui;
 
 // <Misc GUI>
-	Button *buttonrenameinst, *buttonrenamesample, *buttontest, *buttonstopnote, *buttonemptynote, *buttondelnote, *buttoninsnote2,
-		*buttondelnote2, *buttoninsnote;
+	Button *buttonrenameinst, *buttonrenamesample, *buttontest, *buttonstopnote, *buttoncpprm, *buttonemptynote, *buttonemptyfx, *buttondelnote, *buttoninsnote2,
+		*buttondelnote2, *buttoninsnote, *buttonlerpfx;
 	BitButton *buttonswitchsub, *buttonplay, *buttonstop, *buttonpause;
 	CheckBox *cbscrolllock;
 	ToggleButton *tbrecord, *tbmultisample;
-	Label *labeladd, *labeloct, *labelfxcat;
+	Label *labeladd, *labeloct, *labelfxcat, *labelfxop;
 	NumberBox *numberboxadd, *numberboxoctave, *numberboxfxcat;
 	Piano *kb;
 	FXKeyboard *fxkb;
@@ -1220,6 +1220,29 @@ void stopNoteStroke(void) {
 	redraw_main_requested = true;
 }
 
+void copyFxPrm(void) {
+	u16 sel_x1, sel_y1, sel_x2, sel_y2;
+	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+
+	// if multiple cells are selected, it's ambiguous which one they want to
+	// get the param of
+	if (sel_x1 != sel_x2 || sel_y1 != sel_y2)
+		return;
+
+	Cell targetcell = song->getPattern(song->getPotEntry(state->potpos))[sel_x1][sel_y1];
+
+	u8 prm = targetcell.effect_param;
+	u8 prm2 = targetcell.effect2_param; // if no main param
+
+	if (prm == 0 && prm2 != 0)
+		fxkb->setParam(prm2);
+	else
+		fxkb->setParam(prm);
+
+
+	redraw_main_requested = true;
+}
+
 static void actionBufferChangeCallback(void) {
 	buttonundo->set_enabled(action_buffer->can_undo());
 	buttonredo->set_enabled(action_buffer->can_redo());
@@ -1444,7 +1467,10 @@ void updateGuiToNewPattern(u8 newpattern)
 
 // Callback called from song when the pot element changes during playback
 void handlePotPosChangeFromSong(u16 newpotpos)
-{
+{	
+	if (newpotpos != state->potpos)
+			pv->clearSelection();
+			
 	if (state->queued_potpos >= 0) {
 		state->potpos = state->queued_potpos;
 		state->setPlaybackRow(0);
@@ -2084,7 +2110,8 @@ void setEffectParamIfEmpty(u16 eff_par, bool ignore_e=true)
 
 void setEffectParam(u16 eff_par, bool ignore_e=true)
 {
-	
+	if (!state->recording) return;
+
 	u16 sel_x1, sel_y1, sel_x2, sel_y2;
 	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
     CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
@@ -2254,6 +2281,14 @@ void handleToggleEffectsVisibility(bool on)
 		labeloct->hide();
 		fxkb->show();
 		fxkb->enable();
+		buttonemptyfx->show();
+		buttonemptynote->hide();
+		buttoncpprm->show();
+		buttonstopnote->hide();
+		buttoninsnote2->hide();
+		labelfxop->show();
+		buttonlerpfx->show();
+		buttondelnote2->hide();
 	}
 	else
 	{
@@ -2267,6 +2302,14 @@ void handleToggleEffectsVisibility(bool on)
 		labeloct->show();
 		kb->enable();
 		fxkb->disable();
+		buttonemptyfx->hide();
+		buttonemptynote->show();
+		buttoncpprm->hide();
+		buttonstopnote->show();
+		buttoninsnote2->show();
+		labelfxop->hide();
+		buttonlerpfx->hide();
+		buttondelnote2->show();
 	}
 
 	labeloct->pleaseDraw();
@@ -2274,8 +2317,16 @@ void handleToggleEffectsVisibility(bool on)
 	buttonundo->pleaseDraw();
 	numberboxoctave->pleaseDraw();
 	numberboxfxcat->pleaseDraw();
+	buttonemptyfx->pleaseDraw();
+	buttonemptynote->pleaseDraw();
+	buttoncpprm->pleaseDraw();
+	buttonstopnote->pleaseDraw();
+	buttoninsnote2->pleaseDraw();
+	labelfxop->pleaseDraw();
+	buttonlerpfx->pleaseDraw();
+	buttondelnote2->pleaseDraw();
 
-	setRecordMode(on); // ensure red border gets drawn!
+	setRecordMode(state->recording); // ensure red border gets drawn!
 }
 
 // number slider
@@ -2286,7 +2337,7 @@ void handleEffectCommandChanged(s32 eff)
 
 void fxVal(u8 val, bool disabled)
 {
-	fxkb->setCaptionFor(val); // "press" an empty command so we can at least show the new label
+	fxkb->setCaptionFor(val, disabled); // "press" an empty command so we can at least show the new label
 	if (disabled) return; // no command
 
 	if (!state->recording) return;
@@ -2319,6 +2370,8 @@ void handleEffectParamChanged(u8 eff_par)
 // button
 void handleSetEffectParam(void)
 {
+	if(!state->recording) return;
+
 	setEffectParam(fxkb->getParam(), false);
 	handleNoteAdvanceRow();
 }
@@ -3104,6 +3157,58 @@ void setMultisamplesEnabled(bool show)
 	buttonrenamesample->set_visible(show);
 }
 
+void handleLerp(void)
+{
+	if (!fxkb->is_visible()) return;
+	u16 sel_x1, sel_y1, sel_x2, sel_y2;
+	uiPotSelection(&sel_x1, &sel_y1, &sel_x2, &sel_y2, false);
+	CellArray *fill = new CellArray(sel_x2 - sel_x1 + 1, sel_y2 - sel_y1 + 1);
+
+	Cell start = song->getPattern(song->getPotEntry(state->potpos))[sel_x1][sel_y1];
+	Cell end = song->getPattern(song->getPotEntry(state->potpos))[sel_x2][sel_y2];
+
+	if (sel_x1 != sel_x2)
+	{
+		printf("select one col only!\n");
+		return;
+	}
+
+	u16 starteff = start.effect_param;
+	u16 endeff = end.effect_param;
+	u16 startcmd = start.effect;
+
+	u16 maxeff = std::max(starteff, endeff);
+	u16 mineff = std::min(starteff, endeff);
+
+	u16 diff = std::max(sel_y1, sel_y2) - std::min(sel_y1, sel_y2);
+	u16 step = (maxeff - mineff) / diff;
+	int i = 0;
+	if (fill != NULL && fill->valid())
+	{
+		for (u16 row = sel_y1; row <= sel_y2; row++)
+		{
+			Cell cell = song->getPattern(song->getPotEntry(state->potpos))[sel_x1][row];
+			if (start.effect_param != end.effect_param)
+			{
+				//cell.effect = startcmd;
+
+				//printf("mineff=%d diff=%d step=%d maxeff=%d ==%d\n",mineff,diff,step,maxeff,mineff + (step * i++));
+				if (starteff < endeff)
+				{
+					cell.effect_param = mineff + (step * i++);
+				}
+				else
+				{
+					cell.effect_param = maxeff - (step * i++);
+				}
+			}
+			*fill->ptr(sel_x1 - sel_x1, row - sel_y1) = cell;
+		}
+		action_buffer->add(song, new MultipleCellSetAction(state, sel_x1, sel_y1, fill, false));
+		redraw_main_requested = true;
+	}
+}
+
 void handleToggleMapSamples(bool is_active)
 {
 	Instrument *inst = song->getInstrument(state->instrument);
@@ -3801,8 +3906,13 @@ void setupGUI(bool dldi_enabled)
 	buttonredo         = new BitButton(RIGHT_SIDE_BUTTON_X + RIGHT_SIDE_BUTTON_WIDTH - 14, 127, 14, 12, &sub_vram, icon_redo_raw, 8, 8, 3, 2);
 	buttoninsnote2     = new Button(RIGHT_SIDE_BUTTON_X, 140, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
 	buttondelnote2     = new Button(RIGHT_SIDE_BUTTON_X, 153, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
+	buttonlerpfx       = new Button(RIGHT_SIDE_BUTTON_X, 153, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram, false);
 	buttonemptynote    = new Button(RIGHT_SIDE_BUTTON_X, 166, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
+	buttonemptyfx      = new Button(RIGHT_SIDE_BUTTON_X, 166, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram, false);
 	buttonstopnote     = new Button(RIGHT_SIDE_BUTTON_X, 179, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram);
+	labelfxop 		   = new Label(RIGHT_SIDE_BUTTON_X, 140 + 1, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram, false, true, true);
+	labelfxop->setCaption("fx op");
+	buttoncpprm        = new Button(RIGHT_SIDE_BUTTON_X, 179, RIGHT_SIDE_BUTTON_WIDTH, 12, &sub_vram, false);
 	buttonrenamesample = new Button(141, 124, 23, 12, &sub_vram, false);
 	buttonrenameinst   = new Button(141, 19 , 23, 12, &sub_vram);
 
@@ -3836,8 +3946,11 @@ void setupGUI(bool dldi_enabled)
 
 	buttoninsnote2->registerPushCallback(insNote);
 	buttondelnote2->registerPushCallback(delNote);
+	buttonlerpfx->registerPushCallback(handleLerp);
 	buttonemptynote->registerPushCallback(emptyNoteStroke);
+	buttonemptyfx->registerPushCallback(handleClearFx);
 	buttonstopnote->registerPushCallback(stopNoteStroke);
+	buttoncpprm->registerPushCallback(copyFxPrm);
 	buttonrenameinst->registerPushCallback(showTypewriterForInstRename);
 	buttonrenamesample->registerPushCallback(showTypewriterForSampleRename);
 
@@ -3852,8 +3965,11 @@ void setupGUI(bool dldi_enabled)
 
 	buttoninsnote2->setCaption("ins");
 	buttondelnote2->setCaption("del");
+	buttonlerpfx->setCaption("lerp");
 	buttonemptynote->setCaption("clr");
+	buttonemptyfx->setCaption("clr");
 	buttonstopnote->setCaption("--");
+	buttoncpprm->setCaption("get");
 	buttonrenameinst->setCaption("ren");
 	buttonrenamesample->setCaption("ren");
 
@@ -3886,7 +4002,7 @@ void setupGUI(bool dldi_enabled)
 		buttontransposeup->registerPushCallback(handleTransposeUp);
 
 #ifdef ENABLE_EFFECT_MENU
-		cbtoggleeffects = new CheckBox(157, 138, 30, 12, &sub_vram, true, false, true);
+		cbtoggleeffects = new CheckBox(157, 138, 24, 12, &sub_vram, true, false, true);
 		cbtoggleeffects->setCaption("fx");
 		cbtoggleeffects->registerToggleCallback(handleToggleEffectsVisibility);
 
@@ -3972,10 +4088,13 @@ void setupGUI(bool dldi_enabled)
 	gui->registerWidget(buttonstop, 0, SUB_SCREEN);
 	gui->registerWidget(buttonpause, 0, SUB_SCREEN);
 	gui->registerWidget(buttonemptynote, 0, SUB_SCREEN);
+	gui->registerWidget(buttonemptyfx, 0, SUB_SCREEN);
 	gui->registerWidget(buttonundo, 0, SUB_SCREEN);
 	gui->registerWidget(buttonredo, 0, SUB_SCREEN);
 	gui->registerWidget(buttoninsnote2, 0, SUB_SCREEN);
+	gui->registerWidget(labelfxop, 0, SUB_SCREEN);
 	gui->registerWidget(buttondelnote2, 0, SUB_SCREEN);
+	gui->registerWidget(buttonlerpfx, 0, SUB_SCREEN);
 	gui->registerWidget(buttonrenameinst, 0, SUB_SCREEN);
 	gui->registerWidget(buttonrenamesample, 0, SUB_SCREEN);
 	gui->registerWidget(tbmultisample, 0, SUB_SCREEN);
@@ -3987,6 +4106,7 @@ void setupGUI(bool dldi_enabled)
 	gui->registerWidget(labelfxcat, 0, SUB_SCREEN);
 	gui->registerWidget(kb, 0, SUB_SCREEN);
 	gui->registerWidget(buttonstopnote, 0, SUB_SCREEN);
+	gui->registerWidget(buttoncpprm, 0, SUB_SCREEN);
 	gui->registerWidget(tbrecord, 0, SUB_SCREEN);
 	gui->registerWidget(pixmaplogo, 0, SUB_SCREEN);
 	gui->registerWidget(tabbox, 0, SUB_SCREEN);

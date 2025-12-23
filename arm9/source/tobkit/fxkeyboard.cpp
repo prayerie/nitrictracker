@@ -27,7 +27,8 @@ using namespace tobkit;
 
 FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pressedValue, bool disabled), void (*_onParamChange)(u8 val), void (*_onParamSet)(void), void (*_onFxClear)(void), bool _visible)
 	:Widget(_x, _y, FXKEYBOARD_WIDTH, FXKEYBOARD_HEIGHT, _vram, _visible),
-	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange), onParamSet(_onParamSet), onFxClear(_onFxClear)
+	  caption(0), onFxKeypress(_onFxKeypress), onParamChange(_onParamChange), onParamSet(_onParamSet), onFxClear(_onFxClear),
+	  current_is_disabled(false)
 {
 	for (int i = 0; i < NUM_FXKEYS; ++i)
 	{
@@ -38,13 +39,15 @@ FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pr
 		gui.registerWidget(fxbuttons.at(i));
 	}
 
+	effectpar	= new DigitBox(186, 164, 35, 17, _vram, 0, 0, 255, 2);
+	effectpar->registerChangeCallback(onParamChange);
+	gui.registerWidget(effectpar);
+
 	labeleffectpar = new Label(186, 153, 38, 10, _vram, false, true);
 	labeleffectpar->setCaption("param");
 	gui.registerWidget(labeleffectpar);
 
-	effectpar	= new DigitBox(186, 164, 35, 17, _vram, 0, 0, 255, 2);
-	effectpar->registerChangeCallback(onParamChange);
-	gui.registerWidget(effectpar);
+	
 
 	buttonseteffectpar = new Button(186, 180, 35, 10, _vram);
 	buttonseteffectpar->setCaption("set");
@@ -59,7 +62,7 @@ FXKeyboard::FXKeyboard(u8 _x, u8 _y, uint16 **_vram, void (*_onFxKeypress)(u8 pr
 	// buttonmpar->registerPushCallback(onParamSet);
 
 	gui.registerWidget(buttonseteffectpar);
-	gui.registerWidget(buttonmfx);
+	//gui.registerWidget(buttonmfx);
 	//gui.registerWidget(buttonmpar);
 
 	setCategory(0);
@@ -115,6 +118,11 @@ u8 FXKeyboard::getParam(void)
 	return effectpar->getValue();
 }
 
+void FXKeyboard::setParam(u8 val)
+{
+	effectpar->setValue(val);
+}
+
 void FXKeyboard::setCategory(u8 newcat) {
 	category = newcat;
 	
@@ -125,14 +133,23 @@ void FXKeyboard::setCategory(u8 newcat) {
 		bt->setCategory(newcat);
 		bt->setValue(values.at(i)[newcat]);
 
+		current_is_disabled = false;
 		if (newcat == FX_CATEGORY_FT /* && i > 7 */)
-			bt->disable(); 
+			{
+				bt->disable(); 
+				current_is_disabled = true;
+			}
 		else if (newcat == FX_CATEGORY_VOL /* && i > 9 */)
-			bt->disable();
+			{
+				bt->disable(); 
+				current_is_disabled = true;
+			}
 		else if (newcat == FX_CATEGORY_E && (i == 0 || (i > 6 && i < 0xC)))
 		{
 			bt->disable();
 		}
+		else if (i >= 5 && i <= 7)
+			bt->disable();
 		else
 			bt->enable();
 	}
@@ -172,7 +189,8 @@ void FXKeyboard::setTheme(Theme *theme_, u16 bgcolor_)
 	gui.setTheme(theme, theme->col_light_bg);
 }
 
-void FXKeyboard::setCaption(const char *_caption) {
+void FXKeyboard::setCaption(const char *_caption, bool disabled) {
+	current_is_disabled = disabled;
 	if (caption) ntxm_free(caption);
 	caption = (char*)ntxm_cmalloc(strlen(_caption)+1);
 	strcpy(caption, _caption);
@@ -186,7 +204,8 @@ void FXKeyboard::draw(void) {
 
 	drawFullBox(0, 0, width, height, theme->col_bg); // hide the piano
 
-	drawSmallString(caption, 5 + (FXKEYBOARD_WIDTH-20)/2 - (4 * strlen(caption)) / 2 - 6 /*todo: BAD!*/, 4, theme->col_text_light);
+	u16 capcol = current_is_disabled ? theme->col_dark_ctrl_disabled : theme->col_text_light;
+	drawSmallString(caption, 5 + (FXKEYBOARD_WIDTH-20)/2 - (4 * strlen(caption)) / 2 - 6 /*todo: BAD!*/, 4, capcol);
 	gui.revealAll();
 	gui.draw();
 }

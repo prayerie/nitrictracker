@@ -51,22 +51,23 @@ class FXKeyboard: public Widget {
 		void penMove(u8 x, u8 y);
 		void buttonPress(u16 button);
 		
-		void setCaption(const char *caption);
+		void setCaption(const char *caption, bool disabled=false);
 		void setCategory(u8 newcat);
 		u8 getCategory(void) { return category; } // todo Not in the header file ..
 		void setTheme(Theme *theme_, u16 bgcolor_);
 
 		u8 getParam(void);
+		void setParam(u8 newParam);
 		u8 getLastCmd(void) { return last_cmd; }
 		// void reveal(void);
 		// void show(void);
 		void hide(void);
-		void setCaptionFor(u8 val) { 
+		void setCaptionFor(u8 val, bool disabled) { 
 			last_cmd = val; // TODO HACKY
 			if (category == FX_CATEGORY_NORMAL)
-				setCaption(captions[val & 0x0F]);
+				setCaption(captions[val & 0x0F], disabled);
 			else if (category == FX_CATEGORY_E)
-				setCaption(E_captions[val & 0x0F]); // todo hacky remove this lol
+				setCaption(E_captions[val & 0x0F], disabled); // todo hacky remove this lol
 
 		 } // todo move outside of header!
 	private:
@@ -98,6 +99,8 @@ class FXKeyboard: public Widget {
 		void (*onParamSet)(void);
 		void (*onFxClear)(void);
 		void draw(void);
+
+		bool current_is_disabled;
 		char *caption;
 		GUI gui;
 

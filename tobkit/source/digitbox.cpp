@@ -21,10 +21,12 @@ limitations under the License.
 
 using namespace tobkit;
 
+#define DB_MARGIN_TOP 12
+
 /* ===================== PUBLIC ===================== */
 
 DigitBox::DigitBox(u8 _x, u8 _y, u8 _width, u8 _height, uint16 **_vram, u8 _value, u8 _min, u8 _max, u8 _digits)
-	:Widget(_x, _y, _width, _height, _vram),
+	:Widget(_x, _y - DB_MARGIN_TOP, _width, _height + DB_MARGIN_TOP, _vram),
 	value(_value), min(_min), max(_max), digits(_digits), btnstate(0), lasty(0), lastx(0)
 {
 	onChange = 0;
@@ -41,12 +43,12 @@ void DigitBox::penMove(u8 px, u8 py)
 	}
 
 	s16 dy = lasty-py;
-	if(abs(dy)>1 && px > x + 8 &&  px < x + width - 8) {
+	if(abs(dy)>0 && px > x + 8 &&  px < x + width - 8) {
 		int inc = (dy*dy) >> 3;
 		if (dy == 0)
 			inc = 1;
 		if(dy < 0)
-			inc = -inc;
+			inc = -(inc * 2);
 
 		s16 newval = value+inc;
 			
@@ -146,7 +148,8 @@ void DigitBox::registerChangeCallback(void (*onChange_)(u8)) {
 void DigitBox::draw(void)
 {
 	// Number display
-	drawFullBox(9, 1, width-9, height-1, theme->col_lighter_bg);
+	// drawFullBox(9, 1, width-9, height-1, theme->col_lighter_bg);
+	drawFullBox(9, 1 + DB_MARGIN_TOP, width-9, 17-1, theme->col_lighter_bg);
 	
 	u8 extra_offs = 0;
 	char numberstr[5];
@@ -162,7 +165,7 @@ void DigitBox::draw(void)
 	// formatstr[1] = digits+48;
 	
 	snprintf(numberstr, sizeof(numberstr), digits == 2 ? formatstr2 : formatstr1, (digits == 2) ? value : (value & 0x0f));
-	drawString(numberstr, 11 + extra_offs, 5, theme->col_text_value);
+	drawString(numberstr, 11 + extra_offs, 5 + DB_MARGIN_TOP, theme->col_text_value);
 
 	// Probably quite dumb but avoids code duplication lol
 	for (int k = 0; k < 2; ++k)
@@ -175,41 +178,41 @@ void DigitBox::draw(void)
 		// Upper Button
 		//todo:refactor ; just use if(enabled)
 		if(btnstate==1 + 2 * k) {
-			drawGradient(disable_left ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, disable_left ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, 1+offset, 1, 8, 8);
+			drawGradient(disable_left ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, disable_left ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, 1+offset, 1 + DB_MARGIN_TOP, 8, 8);
 		} else {
-			drawGradient(disable_left ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, disable_left ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, 1+offset, 1, 8, 8);
+			drawGradient(disable_left ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, disable_left ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, 1+offset, 1 + DB_MARGIN_TOP, 8, 8);
 		}
 		
 		// This draws the up-arrow
 		int_fast8_t i,j;
 		for(j=0;j<3;j++) {
 			for(i=-j;i<=j;++i) {
-				drawPixel(4+i+offset, j+3, theme->col_text_bt);
+				drawPixel(4+i+offset, j+3+DB_MARGIN_TOP, theme->col_text_bt);
 			}
 		}
 		
-		drawBox(0+offset, 0, 9, 9, theme->col_outline);
+		drawBox(0+offset, 0+DB_MARGIN_TOP, 9, 9, theme->col_outline);
 		
 		// Lower Button
 		if(btnstate==2 + 2 * k) {
-			drawGradient((disable_left || disable_r_up) ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, (disable_left || disable_r_up) ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, 1+offset, 8, 8, 8);
+			drawGradient((disable_left || disable_r_up) ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, (disable_left || disable_r_up) ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, 1+offset, 8+DB_MARGIN_TOP, 8, 8);
 		} else {
-			drawGradient((disable_left || disable_r_up) ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, (disable_left || disable_r_up) ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, 1+offset, 8, 8, 8);
+			drawGradient((disable_left || disable_r_up) ? theme->col_light_ctrl_disabled : theme->col_light_ctrl, (disable_left || disable_r_up) ? theme->col_dark_ctrl_disabled : theme->col_dark_ctrl, 1+offset, 8+DB_MARGIN_TOP, 8, 8);
 		}
 		
 		// This draws the down-arrow
 		for(j=2;j>=0;j--) {
 			for(i=-j;i<=j;++i) {
-				drawPixel(4+i+offset, -j+13, theme->col_text_bt);
+				drawPixel(4+i+offset, -j+13+DB_MARGIN_TOP, theme->col_text_bt);
 			}
 		}
 		
-		drawBox(0+offset, 8, 9, 9, theme->col_outline);
+		drawBox(0+offset, 8+DB_MARGIN_TOP, 9, 9, theme->col_outline);
 	}
 	
 	
 	
 	// Border
-	drawBorder(theme->col_outline);
+	drawBox(0, 0+DB_MARGIN_TOP, width, height-DB_MARGIN_TOP, theme->col_outline);
 	
 }
