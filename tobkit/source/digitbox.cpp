@@ -86,20 +86,18 @@ void DigitBox::penDown(u8 px, u8 py) {
 	u8 oldvalue = value;
 	py -= DB_MARGIN_TOP;
 
-	if((px>x)&&(px<x+width/4)&&(py>y)&&(py<y+9)&&digits==2) { // top left arrow 
+	if((px>x)&&(px<x+width/4+2+DB_MARGIN_LEFT/2)&&(py>y - 4)&&(py<y+9)&&digits==2) { // top left arrow 
 		btnstate = 1;
-		if (value > max-0x10) value = value + 0x10 - max - 1; // wrap around if (value + 0x10) > 0xff. so 0xf0 wraps to 0x00
-		else value+=0x10;
-	} else if((px>x)&&(px<x+width/4)&&(py>y+9)&&(py<y+18)&&digits==2) { // bottom left arrow
+		value+=0x10;
+	} else if((px>x)&&(px<x+width/4+2+DB_MARGIN_LEFT/2)&&(py>y+5)&&(py<y+20)&&digits==2) { // bottom left arrow
 		btnstate = 2;
-		if (value < 0x10) value = max - 0x10 + value + 1; // likewise wrap around downwards
-		else value-=0x10;
-	} else if((px>x)&&(px>x+(width/4)*3)&&(py>y)&&(py<y+9)) { // top right arrow
+		value-=0x10;
+	} else if((px>x)&&(px>x+(width/4+2)*3 - DB_MARGIN_LEFT - 4)&&(py>y - 4)&&(py<y+9)) { // top right arrow
 		btnstate = 3;
-		if(value<max) value++; else value = min;
-	} else if((px>x)&&(px>x+(width/4)*3)&&(py>y+9)&&(py<y+18)) { // bottom right arrow
+		value++;
+	} else if((px>x)&&(px>x+(width/4+2)*3 - DB_MARGIN_LEFT - 4)&&(py>y+5)&&(py<y+20)) { // bottom right arrow
 		btnstate = 4;
-		if(value>min) value--; else value = max;
+		value--;
 	}
 	
 	if(value!=oldvalue) {
